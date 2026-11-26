@@ -29,10 +29,12 @@ jobs:
           pip install -r RB_Psicanalise_Web/requirements.txt
           pip install pyinstaller
 
-      - name: Compilar RB_Psicanalise.exe (OneFile)
+      - name: Compilar RB_Psicanalise.exe (Sem Console + Ícone)
         working-directory: RB_Psicanalise_Web
         run: |
-          pyinstaller --noconfirm --onefile --name "RB_Psicanalise" `
+          pyinstaller --noconfirm --onefile --noconsole `
+            --name "RB_Psicanalise" `
+            --icon "static/app_icon.ico" `
             --add-data "templates;templates" `
             --add-data "static;static" `
             desktop_launcher.py
