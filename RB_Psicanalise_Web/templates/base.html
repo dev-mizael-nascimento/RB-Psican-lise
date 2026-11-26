@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}RB Psicanálise — Sistema Clínico{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,400&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-app: #f1f5f9;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-400: #94a3b8;
+      --slate-200: #e2e8f0;
+      --gold: #846122;
+      --gold-light: #b0893f;
+      --gold-bg: #fef9ee;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      /* Escala fluida: legível em celular/notebook e ampliada confortavelmente em TVs/4K */
+      font-size: clamp(14px, 0.35vw + 11px, 18px);
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg-app);
+      color: var(--slate-900);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Topbar Mobile/Tablet (oculta em desktops) */
+    .mobile-topbar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 58px;
+      background: #090d16;
+      color: #fff;
+      z-index: 1100;
+      padding: 0 16px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .mobile-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      color: #fde047;
+    }
+
+    .mobile-menu-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.65);
+      z-index: 1150;
+    }
+
+    .sidebar-overlay.open {
+      display: block;
+    }
+
+    .sidebar {
+      width: clamp(235px, 16vw, 290px);
+      background: #090d16;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 14px;
+      flex-shrink: 0;
+      border-right: 1px solid #1e293b;
+      transition: transform 0.22s ease;
+    }
+
+    .brand-box {
+      text-align: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 16px;
+    }
+
+    .brand-box img {
+      max-width: 170px;
+      filter: invert(1) brightness(1.9);
+      margin-bottom: 6px;
+    }
+
+    .brand-box .sub {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      color: #d4af37;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #1e293b;
+      color: #fff;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(135deg, rgba(176, 137, 63, 0.28), rgba(132, 97, 34, 0.2));
+      color: #fef08a;
+      border-left: 3px solid var(--gold-light);
+    }
+
+    .user-box {
+      border-top: 1px solid #1e293b;
+      padding-top: 14px;
+      font-size: 0.82rem;
+    }
+
+    .user-name {
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .user-role {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(176, 137, 63, 0.2);
+      color: #fde047;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-logout {
+      margin-top: 10px;
+      width: 100%;
+      padding: 7px;
+      border: 1px solid #334155;
+      background: transparent;
+      color: #cbd5e1;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .btn-logout:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #fff;
+    }
+
+    .main-area {
+      flex: 1;
+      min-width: 0;
+      padding: clamp(16px, 2.2vw, 34px);
+      overflow-y: auto;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 1920px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .page-header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(1.15rem, 1.4vw, 1.6rem);
+      color: var(--slate-900);
+      letter-spacing: 0.04em;
+    }
+
+    .page-header p {
+      color: var(--slate-600);
+      font-size: 0.88rem;
+      margin-top: 2px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      padding: clamp(14px, 1.6vw, 24px);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      margin-bottom: 18px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #b0893f, #846122);
+      color: #fff;
+    }
+
+    .btn-gold:hover {
+      opacity: 0.93;
+    }
+
+    .btn-dark {
+      background: var(--slate-800);
+      color: #fff;
+    }
+
+    .btn-dark:hover {
+      background: var(--slate-700);
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--slate-700);
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-outline:hover {
+      background: #f8fafc;
+    }
+
+    .flash {
+      padding: 11px 15px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.86rem;
+      font-weight: 500;
+      border-left: 4px solid;
+    }
+
+    .flash-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #10b981;
+    }
+
+    .flash-danger {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #ef4444;
+    }
+
+    .flash-warning {
+      background: #fffbeb;
+      color: #92400e;
+      border-color: #f59e0b;
+    }
+
+    .flash-info {
+      background: #eff6ff;
+      color: #1e40af;
+      border-color: #3b82f6;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .col-12 {
+      grid-column: span 12;
+    }
+
+    .col-10 {
+      grid-column: span 10;
+    }
+
+    .col-9 {
+      grid-column: span 9;
+    }
+
+    .col-8 {
+      grid-column: span 8;
+    }
+
+    .col-7 {
+      grid-column: span 7;
+    }
+
+    .col-6 {
+      grid-column: span 6;
+    }
+
+    .col-5 {
+      grid-column: span 5;
+    }
+
+    .col-4 {
+      grid-column: span 4;
+    }
+
+    .col-3 {
+      grid-column: span 3;
+    }
+
+    .col-2 {
+      grid-column: span 2;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--slate-600);
+      margin-bottom: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      color: var(--slate-900);
+      background: #fff;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(132, 97, 34, 0.12);
+    }
+
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    table.data-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8fafc;
+      color: var(--slate-600);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--slate-200);
+      white-space: nowrap;
+    }
+
+    table.data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    table.data-table tr:hover td {
+      background: #fafaf9;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-ok {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .badge-warn {
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .badge-no {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .badge-slate {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    /* Tablet / Notebook compacto (<= 1080px) */
+    @media (max-width: 1080px) {
+
+      .col-2,
+      .col-3 {
+        grid-column: span 6;
+      }
+
+      .col-4 {
+        grid-column: span 6;
+      }
+
+      .col-5,
+      .col-7 {
+        grid-column: span 12;
+      }
+    }
+
+    /* Mobile & Tablet Vertical (<= 900px): Sidebar vira menu gaveta */
+    @media (max-width: 900px) {
+      .mobile-topbar {
+        display: flex;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 265px;
+        z-index: 1200;
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-area {
+        padding: 74px 14px 24px;
+      }
+    }
+
+    /* Celular (<= 640px): todas as colunas empilham em 100% */
+    @media (max-width: 640px) {
+
+      .col-2,
+      .col-3,
+      .col-4,
+      .col-5,
+      .col-6,
+      .col-7,
+      .col-8,
+      .col-9,
+      .col-10 {
+        grid-column: span 12;
+      }
+
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body>
+  <div class="mobile-topbar">
+    <div class="mobile-brand">RB PSICANÁLISE</div>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Abrir Menu">☰ Menu</button>
+  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <aside class="sidebar" id="appSidebar">
+    <div>
+      <div class="brand-box">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RB Psicanálise">
+        <div class="sub">Sistema Clínico</div>
+      </div>
+      <nav class="nav-links">
+        <a href="{{ url_for('dashboard') }}"
+          class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
+        <a href="{{ url_for('pacientes_lista') }}"
+          class="nav-link {% if request.endpoint in ('pacientes_lista', 'paciente_novo', 'paciente_detalhe') %}active{% endif %}">🗂️
+          Pacientes & Prontuários</a>
+        <a href="{{ url_for('kanban') }}" class="nav-link {% if request.endpoint == 'kanban' %}active{% endif %}">📋
+          Quadro Kanban</a>
+        <a href="{{ url_for('agenda') }}" class="nav-link {% if request.endpoint == 'agenda' %}active{% endif %}">📅
+          Agenda Visual</a>
+        <a href="{{ url_for('formularios') }}"
+          class="nav-link {% if request.endpoint == 'formularios' %}active{% endif %}">📝 Formulários</a>
+        {% if current_user.is_admin_dev %}
+        <a href="{{ url_for('admin_dev') }}"
+          class="nav-link {% if request.endpoint == 'admin_dev' %}active{% endif %}">⚙️ Manutenção (Dev)</a>
+        {% endif %}
+      </nav>
+    </div>
+
+    <div class="user-box">
+      <div class="user-name">{{ current_user.nome }}</div>
+      <div class="user-role">{{ current_user.perfil }}</div>
+      <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">Versão v{{ app_version }}</div>
+      <form method="POST" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-logout">Sair do Sistema</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <div class="main-container">
+      <div id="updateBanner" class="flash flash-warning" style="display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <strong>🚀 Nova versão disponível (<span id="updateVersaoTxt"></span>)!</strong>
+          Seus dados e prontuários são mantidos intactos com backup automático.
+        </div>
+        <div style="display:flex; gap:8px;">
+          {% if is_frozen_exe %}
+          <button class="btn btn-gold" style="padding:6px 12px; font-size:0.78rem;" onclick="iniciarAutoUpdate()">Atualizar Agora (Sem Reinstalar)</button>
+          {% else %}
+          <a id="updateReleaseLink" href="#" target="_blank" class="btn btn-dark" style="padding:6px 12px; font-size:0.78rem;">Ver Nova Versão</a>
+          {% endif %}
+        </div>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById('appSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    (function checarUpdateDiscreto() {
+      const cache = sessionStorage.getItem('rb_update_check');
+      if (cache) {
+        try { mostrarBannerUpdate(JSON.parse(cache)); return; } catch(e) {}
+      }
+      fetch('/api/sistema/checar-atualizacao')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d) {
+            sessionStorage.setItem('rb_update_check', JSON.stringify(d));
+            mostrarBannerUpdate(d);
+          }
+        }).catch(() => {});
+    })();
+
+    function mostrarBannerUpdate(d) {
+      if (d && d.disponivel) {
+        document.getElementById('updateVersaoTxt').innerText = 'v' + d.versao_remota;
+        const rel = document.getElementById('updateReleaseLink');
+        if (rel && d.release_url) rel.href = d.release_url;
+        document.getElementById('updateBanner').style.display = 'flex';
+      }
+    }
+
+    async function iniciarAutoUpdate() {
+      if (!confirm('Deseja atualizar agora? Será feito um backup automático do banco de dados e o sistema reiniciará na nova versão.')) return;
+      const r = await fetch('/api/sistema/atualizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' }
+      });
+      const d = await r.json();
+      if (r.ok) {
+        alert(d.mensagem + ' Aguarde 5 segundos e atualize a página.');
+      } else {
+        alert(d.erro || 'Não foi possível atualizar agora.');
+      }
+    }
+  </script>
+</body>
+
+</html>

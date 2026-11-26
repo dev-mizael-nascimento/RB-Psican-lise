@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% block title %}Quadro Kanban — RB Psicanálise{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<style>
+  .kanban-board {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    align-items: flex-start;
+  }
+  .kanban-col {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    flex: 1 1 270px;
+    min-width: 265px;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 170px);
+  }
+  .kanban-col-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    border-top: 4px solid #846122;
+    border-radius: 10px 10px 0 0;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+  }
+  .kanban-col-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .col-count {
+    background: #e2e8f0;
+    color: #334155;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+  .col-actions button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: #64748b;
+    padding: 2px 4px;
+  }
+  .col-actions button:hover { color: #0f172a; }
+  .kanban-cards {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    overflow-y: auto;
+    min-height: 80px;
+    flex: 1;
+  }
+  .k-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    cursor: grab;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .k-card:hover { box-shadow: 0 4px 12px rgba(15,23,42,0.1); border-color: #cbd5e1; }
+  .k-card:active { cursor: grabbing; }
+  .k-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+  .k-card-name { font-weight: 700; font-size: 0.86rem; color: #0f172a; text-decoration: none; }
+  .k-card-name:hover { color: #846122; text-decoration: underline; }
+  .k-card-pront { font-size: 0.68rem; color: #64748b; font-weight: 600; }
+  .k-card-meta { font-size: 0.75rem; color: #475569; display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+  .k-card-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+  .k-add-btn {
+    margin: 0 10px 10px;
+    padding: 7px;
+    border: 1px dashed #94a3b8;
+    background: transparent;
+    color: #475569;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .k-add-btn:hover { background: #fff; border-color: #846122; color: #846122; }
+
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(9,13,22,0.6);
+    z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 420px;
+    padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border-top: 4px solid #846122;
+  }
+  .modal-box h3 { font-family: 'Cinzel', serif; font-size: 1rem; margin-bottom: 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Quadro Kanban Flexível</h1>
+    <p>Arraste os pacientes entre colunas para atualizar a fase do atendimento</p>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-outline" onclick="abrirModalColuna()">+ Nova Coluna</button>
+    <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente Completo</a>
+  </div>
+</div>
+
+<div class="kanban-board" id="kanbanBoard">
+  {% for col in colunas %}
+  {% set cards = pacientes_por_coluna.get(col.id, []) %}
+  <div class="kanban-col" data-col-id="{{ col.id }}">
+    <div class="kanban-col-header" style="border-top-color: {{ col.cor }};">
+      <div class="kanban-col-title">
+        <span>{{ col.titulo }}</span>
+        <span class="col-count" id="count-{{ col.id }}">{{ cards|length }}</span>
+      </div>
+      <div class="col-actions">
+        <button title="Editar Coluna" onclick="editarColuna({{ col.id }}, '{{ col.titulo|e }}', '{{ col.cor }}')">✏️</button>
+        <button title="Excluir Coluna" onclick="excluirColuna({{ col.id }}, '{{ col.titulo|e }}')">🗑️</button>
+      </div>
+    </div>
+
+    <div class="kanban-cards" data-col-id="{{ col.id }}">
+      {% for item in cards %}
+      {% set p = item.paciente %}
+      <div class="k-card" data-paciente-id="{{ p.id }}">
+        <div class="k-card-top">
+          <a href="{{ url_for('paciente_detalhe', paciente_id=p.id) }}" class="k-card-name">{{ p.nome_completo }}</a>
+          <span class="k-card-pront">{{ p.prontuario }}</span>
+        </div>
+        <div class="k-card-meta">
+          {% if p.telefone %}
+          <div>📞 {{ p.telefone }}
+            {% if item.tel_limpo %}
+            <a href="https://wa.me/55{{ item.tel_limpo }}" target="_blank" style="color:#059669; font-weight:700; text-decoration:none; margin-left:4px;">WhatsApp ↗</a>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% if item.proximo %}
+          <div>📅 Próx: <strong>{{ item.proximo.inicio.strftime('%d/%m %H:%M') }}</strong></div>
+          {% endif %}
+        </div>
+        <div class="k-card-badges">
+          {% if item.pendentes > 0 %}
+          <span class="badge badge-warn">{{ item.pendentes }} pag. pendente(s)</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <button class="k-add-btn" onclick="abrirModalCard({{ col.id }}, '{{ col.titulo|e }}')">+ Contato / Paciente Rápido</button>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal Nova/Editar Coluna -->
+<div class="modal-backdrop" id="modalColuna">
+  <div class="modal-box">
+    <h3 id="modalColTitulo">Nova Coluna Kanban</h3>
+    <input type="hidden" id="colEditId">
+    <div class="field" style="margin-bottom:10px;">
+      <label>Título da Coluna</label>
+      <input type="text" id="colInputTitulo" placeholder="Ex: Em Avaliação Inicial">
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>Cor de Destaque</label>
+      <input type="color" id="colInputCor" value="#846122" style="height:38px; padding:2px;">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn btn-outline" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarColuna()">Salvar Coluna</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Card Rápido -->
+<div class="modal-backdrop" id="modalCard">
+  <div class="modal-box">
+    <h3>Adicionar em: <span id="cardColNome"></span></h3>
+    <input type="hidden" id="cardColId">
+    <div class="field" style="margin-bottom:10px;">
+      <label>Nome Completo *</label>
+      <input type="text" id="cardNome" placeholder="Nome do paciente ou interessado">
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>Telefone / WhatsApp</label>
+      <input type="text" id="cardTel" placeholder="(11) 99999-9999">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn btn-outline" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarCardRapido()">Adicionar Card</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CSRF_TOKEN = "{{ csrf_token() }}";
+
+  function atualizarContadores() {
+    document.querySelectorAll('.kanban-col').forEach(col => {
+      const id = col.dataset.colId;
+      const qtd = col.querySelectorAll('.k-card').length;
+      document.getElementById('count-' + id).innerText = qtd;
+    });
+  }
+
+  document.querySelectorAll('.kanban-cards').forEach(lista => {
+    new Sortable(lista, {
+      group: 'kanban-rb',
+      animation: 150,
+      onEnd: async function (evt) {
+        atualizarContadores();
+        const colunaId = evt.to.dataset.colId;
+        const pacienteId = evt.item.dataset.pacienteId;
+        const ordemIds = Array.from(evt.to.querySelectorAll('.k-card')).map(c => c.dataset.pacienteId);
+        await fetch('/api/kanban/mover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+          body: JSON.stringify({ paciente_id: pacienteId, coluna_id: colunaId, ordem_ids: ordemIds })
+        });
+      }
+    });
+  });
+
+  function fecharModais() {
+    document.getElementById('modalColuna').classList.remove('open');
+    document.getElementById('modalCard').classList.remove('open');
+  }
+
+  function abrirModalColuna() {
+    document.getElementById('modalColTitulo').innerText = 'Nova Coluna Kanban';
+    document.getElementById('colEditId').value = '';
+    document.getElementById('colInputTitulo').value = '';
+    document.getElementById('colInputCor').value = '#846122';
+    document.getElementById('modalColuna').classList.add('open');
+  }
+
+  function editarColuna(id, titulo, cor) {
+    document.getElementById('modalColTitulo').innerText = 'Editar Coluna';
+    document.getElementById('colEditId').value = id;
+    document.getElementById('colInputTitulo').value = titulo;
+    document.getElementById('colInputCor').value = cor || '#846122';
+    document.getElementById('modalColuna').classList.add('open');
+  }
+
+  async function salvarColuna() {
+    const id = document.getElementById('colEditId').value;
+    const titulo = document.getElementById('colInputTitulo').value.trim();
+    const cor = document.getElementById('colInputCor').value;
+    if (!titulo) return alert('Informe o título da coluna.');
+    const url = id ? `/api/kanban/colunas/${id}/editar` : '/api/kanban/colunas';
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ titulo, cor })
+    });
+    if (r.ok) location.reload();
+  }
+
+  async function excluirColuna(id, titulo) {
+    if (!confirm(`Excluir a coluna "${titulo}"? Os pacientes dela serão movidos para a primeira coluna disponível.`)) return;
+    const r = await fetch(`/api/kanban/colunas/${id}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+    });
+    const d = await r.json();
+    if (!r.ok) return alert(d.erro || 'Erro ao excluir.');
+    location.reload();
+  }
+
+  function abrirModalCard(colId, colNome) {
+    document.getElementById('cardColId').value = colId;
+    document.getElementById('cardColNome').innerText = colNome;
+    document.getElementById('cardNome').value = '';
+    document.getElementById('cardTel').value = '';
+    document.getElementById('modalCard').classList.add('open');
+  }
+
+  async function salvarCardRapido() {
+    const coluna_id = document.getElementById('cardColId').value;
+    const nome_completo = document.getElementById('cardNome').value.trim();
+    const telefone = document.getElementById('cardTel').value.trim();
+    if (!nome_completo) return alert('Informe o nome.');
+    const r = await fetch('/api/kanban/card-rapido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ coluna_id, nome_completo, telefone })
+    });
+    if (r.ok) location.reload();
+  }
+</script>
+{% endblock %}

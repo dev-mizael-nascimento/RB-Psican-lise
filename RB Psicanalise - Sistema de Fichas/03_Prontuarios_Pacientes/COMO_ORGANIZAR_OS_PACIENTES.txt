@@ -1,0 +1,9 @@
+PASTA DE PRONTUÁRIOS DOS PACIENTES — RB PSICANÁLISE
+
+Sugestão de organização:
+Crie uma subpasta para cada paciente (ex: "001 - Mariana Vasconcelos Ribeiro")
+e salve lá dentro:
+  1. O PDF da Ficha de Protocolo & Cadastro (assinado)
+  2. O PDF da Ficha de Anamnese Clínica
+  3. O arquivo .json do Controle de Sessões (baixado pelo botão "Baixar (.json)")
+     para poder reabrir e atualizar a cada nova sessão.

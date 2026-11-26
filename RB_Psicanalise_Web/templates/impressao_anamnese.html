@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Impressão Anamnese — {{ paciente.nome_completo }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; line-height: 1.38; }
+    .print-bar { position: sticky; top: 0; z-index: 100; background: #090d16; color: #fff; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg,#b0893f,#846122); color: #fff; font-size: 0.82rem; }
+    .a4-page { background: #fff; width: 210mm; min-height: 297mm; padding: 13mm 15mm; margin: 24px auto; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 10px 30px rgba(0,0,0,0.14); }
+    .page-frame { position: absolute; top: 6mm; left: 7mm; right: 7mm; bottom: 6mm; border: 1px solid #cbd5e1; pointer-events: none; }
+    .header-main { border-bottom: 2px solid #1e293b; padding-bottom: 9px; margin-bottom: 10px; text-align: center; }
+    .header-main img { max-width: 240px; max-height: 68px; object-fit: contain; margin-bottom: 4px; }
+    .header-main h1 { font-family: 'Cinzel', serif; font-size: 1.12rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .meta-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; margin-top: 6px; font-size: 0.74rem; }
+    .blk { margin-bottom: 8px; }
+    .lbl { background: #f1f5f9; border-left: 3px solid #846122; padding: 3px 8px; font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+    .val { border: 1px solid #cbd5e1; border-radius: 3px; padding: 5px 8px; font-size: 0.76rem; min-height: 36px; white-space: pre-wrap; }
+    .footer { border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 0.64rem; color: #94a3b8; }
+    @media print {
+      body { background: #fff; }
+      .print-bar { display: none !important; }
+      .a4-page { margin: 0; box-shadow: none; width: 100%; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>RB Psicanálise — Impressão Anamnese Clínica (Documento Sigiloso)</span>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / Gerar PDF (A4)</button>
+  </div>
+
+  <article class="a4-page">
+    <div class="page-frame"></div>
+    <div>
+      <header class="header-main">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RB Psicanálise">
+        <h1>Ficha de Anamnese Clínica</h1>
+        <div class="meta-bar">
+          <div><strong>PRONTUÁRIO:</strong> {{ paciente.prontuario }}</div>
+          <div><strong>ANALISANDO(A):</strong> {{ paciente.nome_completo }}</div>
+          <div><strong>DATA:</strong> {{ anamnese.data_anamnese if anamnese else hoje.strftime('%d/%m/%Y') }}</div>
+        </div>
+      </header>
+
+      {% set itens = [
+        ('01. Motivo da Procura', anam.get('motivo_procura','')),
+        ('02. História da Queixa', anam.get('historia_queixa','')),
+        ('03. História Familiar', anam.get('historia_familiar','')),
+        ('04. Desenvolvimento Infantil', anam.get('desenvolvimento_infantil','')),
+        ('05. Escolaridade', anam.get('escolaridade_historico','')),
+        ('06. Vida Pessoal', anam.get('vida_pessoal','')),
+        ('07. Relacionamento Afetivo', anam.get('relacionamento_afetivo','')),
+        ('08. Saúde Física', anam.get('saude_fisica','')),
+        ('09. Uso de Medicamentos', anam.get('uso_medicamentos','')),
+        ('10. Hábitos de Vida', anam.get('habitos_vida','')),
+        ('11. Expectativas', anam.get('expectativas','')),
+        ('12. Observações Iniciais', anam.get('observacoes_iniciais',''))
+      ] %}
+      {% for titulo, texto in itens %}
+      <div class="blk">
+        <div class="lbl">{{ titulo }}</div>
+        <div class="val">{{ texto }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <footer class="footer">
+      <span>RB Psicanálise • Anamnese Clínica Confidencial</span>
+      <span>Emitido em {{ hoje.strftime('%d/%m/%Y %H:%M') }}</span>
+    </footer>
+  </article>
+</body>
+</html>

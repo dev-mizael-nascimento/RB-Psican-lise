@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard Clínico</h1>
+    <p>Visão geral da clínica RB Psicanálise</p>
+  </div>
+  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente</a>
+</div>
+
+<div class="form-grid" style="margin-bottom: 20px;">
+  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #846122;">
+    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Pacientes Ativos</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_pacientes }}
+    </div>
+  </div>
+  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #1e293b;">
+    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Sessões Registradas</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_sessoes }}
+    </div>
+  </div>
+  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #d97706;">
+    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Pagamentos Pendentes</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; margin-top:4px; color:#92400e;">{{
+      qtd_pendentes }} (R$ {{ "%.2f"|format(valor_pendente) }})</div>
+  </div>
+  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #10b981;">
+    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Recebido / Form. Resp.
+    </div>
+    <div style="font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; margin-top:4px; color:#065f46;">R$ {{
+      "%.2f"|format(valor_recebido) }} • {{ form_respondidos }} resp.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+    <h2 style="font-family:'Cinzel',serif; font-size:1rem;">Pacientes Recentes</h2>
+    <form method="GET" action="{{ url_for('pacientes_lista') }}" style="display:flex; gap:8px; flex-wrap:wrap; width:100%; max-width:380px;">
+      <input type="text" name="q" placeholder="Buscar por nome, CPF ou prontuário..."
+        style="flex:1; min-width:180px; padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px;">
+      <button type="submit" class="btn btn-dark">Buscar</button>
+    </form>
+  </div>
+  {% if ultimos_pacientes %}
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Prontuário</th>
+        <th>Nome Completo</th>
+        <th>Telefone</th>
+        <th>Coluna Kanban</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in ultimos_pacientes %}
+      <tr>
+        <td><strong>{{ p.prontuario }}</strong></td>
+        <td>{{ p.nome_completo }}</td>
+        <td>{{ p.telefone or '—' }}</td>
+        <td><span class="badge badge-slate">{{ p.kanban_coluna.titulo if p.kanban_coluna else '—' }}</span></td>
+        <td><a href="{{ url_for('paciente_detalhe', paciente_id=p.id) }}" class="btn btn-outline"
+            style="padding:5px 10px; font-size:0.78rem;">Abrir Prontuário</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="color:#64748b; font-size:0.88rem;">Nenhum paciente cadastrado ainda. Clique em <strong>+ Novo
+      Paciente</strong> para começar.</p>
+  {% endif %}
+</div>
+{% endblock %}

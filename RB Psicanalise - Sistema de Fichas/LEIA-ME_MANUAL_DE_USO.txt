@@ -1,0 +1,92 @@
+================================================================================
+              RB PSICANÁLISE — MANUAL DE USO DO SISTEMA DE FICHAS
+================================================================================
+
+Este pacote reúne todas as fichas clínicas da RB Psicanálise organizadas para
+uso imediato tanto no computador (preenchimento digital e geração de PDF) quanto
+em papel (impressão direta em branco).
+
+--------------------------------------------------------------------------------
+1. ESTRUTURA DE PASTAS
+--------------------------------------------------------------------------------
+
+[01_Fichas_Interativas_Computador]
+  Contém as fichas em formato interativo (.html). Basta dar dois cliques em
+  qualquer arquivo para abrir no seu navegador (Google Chrome ou Microsoft Edge).
+  Não precisa de internet nem de instalação de programas.
+  - 01_Ficha_Protocolo_e_Cadastro.html  (Cadastro inicial + Termo de Consentimento)
+  - 02_Ficha_de_Anamnese_Clinica.html   (Anamnese completa em 2 páginas)
+  - 03_Ficha_Controle_de_Sessoes.html   (Controle individual de sessões)
+
+[02_Fichas_Prontas_para_Imprimir_PDF]
+  Contém as mesmas 3 fichas em PDF oficial A4 em branco, prontas para imprimir
+  e preencher à caneta durante o atendimento presencial, se preferir.
+  - 01_Ficha_Protocolo_e_Cadastro.pdf
+  - 02_Ficha_de_Anamnese_Clinica.pdf
+  - 03_Ficha_Controle_de_Sessoes.pdf
+
+[03_Prontuarios_Pacientes]
+  Pasta destinada a guardar os documentos de cada paciente.
+  Recomendação: crie uma subpasta com o nome de cada paciente aqui dentro
+  (ex: "Maria_Silva") para salvar os PDFs assinados e o arquivo .json do
+  Controle de Sessões.
+
+[04_Identidade_Visual]
+  Contém o arquivo original do logotipo da clínica em alta resolução.
+
+--------------------------------------------------------------------------------
+2. COMO USAR AS FICHAS INTERATIVAS NO COMPUTADOR (PASSO A PASSO)
+--------------------------------------------------------------------------------
+
+1) Abra a pasta "01_Fichas_Interativas_Computador".
+2) Dê dois cliques na ficha desejada (ela abrirá no navegador).
+3) Preencha os campos diretamente na tela:
+   - Datas, CPF, CEP, telefone e horário são formatados automaticamente.
+   - Na Ficha 01, ao digitar a Data de Nascimento, a Idade é calculada sozinha.
+   - O nome do paciente digitado na Página 1 aparece automaticamente na Página 2.
+4) Para gerar um PDF preenchido ou imprimir:
+   - Clique no botão dourado "Imprimir / Gerar PDF (A4)" na barra superior.
+   - No destino, escolha a sua impressora ou "Salvar como PDF".
+   - A barra superior de botões desaparece automaticamente na impressão.
+
+Botões úteis da barra superior:
+- "Exemplo Preenchido": preenche um modelo fictício para visualização rápida.
+- "Limpar": apaga os campos da tela para iniciar um novo atendimento.
+
+--------------------------------------------------------------------------------
+3. COMO SALVAR E REABRIR A FICHA DE CONTROLE DE SESSÕES (FICHA 03)
+--------------------------------------------------------------------------------
+
+A Ficha 03 (03_Ficha_Controle_de_Sessoes.html) é INDIVIDUAL por paciente e
+permite continuar preenchendo as sessões ao longo dos meses.
+
+Você tem DUAS formas de salvar e reabrir a ficha de cada paciente:
+
+OPÇÃO A — Diretamente no Navegador (rápido no mesmo computador):
+  1. Digite o nome do paciente no cabeçalho e lance as sessões do dia.
+  2. Clique em "Salvar Paciente" na barra superior.
+  3. Na próxima sessão, abra a ficha e selecione o nome do paciente no menu
+     "Reabrir Paciente Salvo..." (no canto esquerdo da barra superior).
+  4. Adicione a nova linha de sessão e clique em "Salvar Paciente" novamente.
+
+OPÇÃO B — Salvando um arquivo na pasta do paciente (recomendado para backup):
+  1. Após preencher as sessões, clique em "Baixar (.json)" na barra superior.
+  2. Salve o arquivo dentro da pasta do paciente em "03_Prontuarios_Pacientes".
+  3. Quando quiser reabrir (mesmo em outro computador), abra a ficha .html,
+     clique em "Abrir (.json)" e escolha o arquivo daquele paciente.
+
+Dica extra: Se o paciente ultrapassar 16 sessões, clique no botão "+ Nova Linha"
+acima da tabela para adicionar quantas linhas forem necessárias.
+
+--------------------------------------------------------------------------------
+4. DICAS IMPORTANTES
+--------------------------------------------------------------------------------
+- Sempre utilize o botão "Imprimir / Gerar PDF (A4)" da própria barra da ficha
+  para garantir que a folha saia centralizada e sem cabeçalhos do navegador.
+- Caso use a Opção A (Salvar no Navegador), evite limpar os dados/histórico
+  de sites do navegador; para segurança total, utilize também a Opção B
+  ("Baixar (.json)") e salve na pasta do paciente.
+
+================================================================================
+                         RB PSICANÁLISE — Uso Clínico
+================================================================================

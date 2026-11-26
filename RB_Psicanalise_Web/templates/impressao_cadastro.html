@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Impressão Cadastro — {{ paciente.nome_completo }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; line-height: 1.38; }
+    .print-bar { position: sticky; top: 0; z-index: 100; background: #090d16; color: #fff; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg,#b0893f,#846122); color: #fff; text-decoration: none; font-size: 0.82rem; }
+    .a4-page { background: #fff; width: 210mm; min-height: 297mm; padding: 13mm 15mm; margin: 24px auto; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 10px 30px rgba(0,0,0,0.14); }
+    .page-frame { position: absolute; top: 6mm; left: 7mm; right: 7mm; bottom: 6mm; border: 1px solid #cbd5e1; pointer-events: none; }
+    .header-main { border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-bottom: 12px; text-align: center; }
+    .header-main img { max-width: 250px; max-height: 72px; object-fit: contain; margin-bottom: 4px; }
+    .header-main h1 { font-family: 'Cinzel', serif; font-size: 1.15rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .header-main .sub { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.8rem; color: #64748b; }
+    .meta-bar { display: flex; justify-content: center; gap: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; margin-top: 6px; font-size: 0.74rem; }
+    .sec-title { background: #f1f5f9; border-left: 3.5px solid #846122; padding: 3.5px 8px; font-family: 'Cinzel', serif; font-size: 0.75rem; font-weight: 700; margin: 10px 0 6px; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px 8px; }
+    .c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c6 { grid-column: span 6; } .c4 { grid-column: span 4; } .c3 { grid-column: span 3; } .c2 { grid-column: span 2; }
+    .lbl { font-size: 0.62rem; font-weight: 700; color: #475569; text-transform: uppercase; }
+    .val { border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px 7px; font-size: 0.78rem; min-height: 26px; background: #fff; }
+    .consent { border: 1px solid #cbd5e1; background: #fafaf9; padding: 10px 12px; font-size: 0.73rem; line-height: 1.48; text-align: justify; margin-top: 8px; }
+    .signs { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 28px; text-align: center; font-size: 0.74rem; }
+    .sline { border-top: 1.2px solid #334155; margin-bottom: 4px; }
+    .footer { border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 0.64rem; color: #94a3b8; }
+    @media print {
+      body { background: #fff; }
+      .print-bar { display: none !important; }
+      .a4-page { margin: 0; box-shadow: none; width: 100%; height: 297mm; page-break-after: always; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>RB Psicanálise — Impressão Ficha de Protocolo & Cadastro</span>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / Gerar PDF (A4)</button>
+  </div>
+
+  <article class="a4-page">
+    <div class="page-frame"></div>
+    <div>
+      <header class="header-main">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RB Psicanálise">
+        <h1>Ficha de Protocolo & Cadastro</h1>
+        <div class="sub">Admissão e Registro de Atendimento Clínico Psicanalítico</div>
+        <div class="meta-bar">
+          <div><strong>PRONTUÁRIO:</strong> {{ paciente.prontuario }}</div>
+          <div><strong>INÍCIO:</strong> {{ cad.get('data_inicio','—') }}</div>
+          <div><strong>MODALIDADE:</strong> {{ cad.get('formato_atendimento','Presencial') }}</div>
+        </div>
+      </header>
+
+      <div class="sec-title">01. Dados de Identificação</div>
+      <div class="grid">
+        <div class="c8"><div class="lbl">Nome Completo</div><div class="val">{{ paciente.nome_completo }}</div></div>
+        <div class="c2"><div class="lbl">Nascimento</div><div class="val">{{ cad.get('data_nascimento','') }}</div></div>
+        <div class="c2"><div class="lbl">Idade</div><div class="val">{{ cad.get('idade','') }}</div></div>
+        <div class="c3"><div class="lbl">Estado Civil</div><div class="val">{{ cad.get('estado_civil','') }}</div></div>
+        <div class="c5"><div class="lbl">Profissão</div><div class="val">{{ cad.get('profissao','') }}</div></div>
+        <div class="c4"><div class="lbl">Escolaridade</div><div class="val">{{ cad.get('escolaridade','') }}</div></div>
+        <div class="c6"><div class="lbl">CPF</div><div class="val">{{ paciente.cpf }}</div></div>
+        <div class="c6"><div class="lbl">RG / Órgão</div><div class="val">{{ cad.get('rg','') }}</div></div>
+      </div>
+
+      <div class="sec-title">02. Endereço, Contato & Emergência</div>
+      <div class="grid">
+        <div class="c6"><div class="lbl">Endereço</div><div class="val">{{ cad.get('endereco','') }}</div></div>
+        <div class="c4"><div class="lbl">Cidade / UF</div><div class="val">{{ cad.get('cidade','') }}</div></div>
+        <div class="c2"><div class="lbl">CEP</div><div class="val">{{ cad.get('cep','') }}</div></div>
+        <div class="c4"><div class="lbl">Telefone / WhatsApp</div><div class="val">{{ paciente.telefone }}</div></div>
+        <div class="c8"><div class="lbl">E-mail</div><div class="val">{{ paciente.email }}</div></div>
+        <div class="c6"><div class="lbl">Contato Emergencial</div><div class="val">{{ cad.get('contato_emergencial','') }} ({{ cad.get('grau_parentesco','') }})</div></div>
+        <div class="c6"><div class="lbl">Telefone Emergencial</div><div class="val">{{ cad.get('telefone_emergencia','') }}</div></div>
+      </div>
+
+      <div class="sec-title">03. Histórico Clínico & Síntese</div>
+      <div class="grid">
+        <div class="c6"><div class="lbl">Como conheceu</div><div class="val">{{ cad.get('como_conheceu','') }}</div></div>
+        <div class="c6"><div class="lbl">Psicanálise/Terapia Anterior</div><div class="val">{{ 'Sim' if cad.get('ja_fez_terapia')=='sim' else 'Não' }} — {{ cad.get('detalhe_terapia','') }}</div></div>
+        <div class="c6"><div class="lbl">Uso de Medicação</div><div class="val">{{ 'Sim' if cad.get('faz_uso_medicacao')=='sim' else 'Não' }} — {{ cad.get('qual_medicacao','') }}</div></div>
+        <div class="c6"><div class="lbl">Acompanhamento Médico</div><div class="val">{{ 'Sim' if cad.get('acompanhamento_medico')=='sim' else 'Não' }} — {{ cad.get('detalhe_medico','') }}</div></div>
+        <div class="c12"><div class="lbl">Condições de Saúde Importantes</div><div class="val" style="min-height:42px;">{{ cad.get('condicoes_saude','') }}</div></div>
+        <div class="c12"><div class="lbl">Queixa Principal (Síntese)</div><div class="val" style="min-height:42px;">{{ cad.get('queixa_principal','') }}</div></div>
+      </div>
+
+      <div class="sec-title">04. Enquadre & Termo de Consentimento</div>
+      <div class="grid">
+        <div class="c3"><div class="lbl">Frequência</div><div class="val">{{ cad.get('frequencia','') }}</div></div>
+        <div class="c3"><div class="lbl">Duração</div><div class="val">{{ cad.get('duracao','') }}</div></div>
+        <div class="c3"><div class="lbl">Honorários</div><div class="val">{{ cad.get('honorarios','') }}</div></div>
+        <div class="c3"><div class="lbl">Termo Aceito</div><div class="val">{{ 'Sim' if cad.get('termo_aceito') else 'Pendente assinatura' }}</div></div>
+      </div>
+      <div class="consent">
+        <strong>Declaração de Consentimento:</strong> Declaro que fui devidamente informado(a), compreendo a natureza do atendimento psicanalítico, o rigoroso sigilo profissional, as regras de enquadre/pontualidade e a possibilidade mútua de interrupção. Concordo integralmente com os termos estabelecidos.
+      </div>
+      <div class="signs">
+        <div><div class="sline"></div><strong>{{ paciente.nome_completo }}</strong><br><span style="color:#64748b;font-size:0.65rem;">Analisando(a) • CPF: {{ paciente.cpf or '_______________' }}</span></div>
+        <div><div class="sline"></div><strong>Psicanalista Responsável</strong><br><span style="color:#64748b;font-size:0.65rem;">RB Psicanálise • {{ hoje.strftime('%d/%m/%Y') }}</span></div>
+      </div>
+    </div>
+    <footer class="footer">
+      <span>RB Psicanálise • Prontuário Clínico Confidencial</span>
+      <span>Emitido em {{ hoje.strftime('%d/%m/%Y %H:%M') }}</span>
+    </footer>
+  </article>
+</body>
+</html>

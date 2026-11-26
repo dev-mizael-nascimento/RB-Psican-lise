@@ -1,0 +1,21 @@
+# Segredos e Banco de Dados (NUNCA versionar)
+.env
+*.db
+*.sqlite
+*.sqlite3
+backups/
+
+# Python / PyInstaller
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+.venv/
+venv/
+
+# Arquivos temporários de geração/preview
+logo_base64.txt
+page_*.png
+anamnese_page_*.png
+controle_sessoes_page_*.png

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Formulários & Links — RB Psicanálise{% endblock %}
+{% block head_extra %}
+<style>
+  .builder-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 768px) {
+    .builder-row { grid-template-columns: 1fr; }
+  }
+  .builder-row input, .builder-row select {
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 0.82rem;
+    font-family: inherit;
+  }
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(9,13,22,0.6);
+    z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 720px;
+    max-height: 90vh; overflow-y: auto; padding: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3); border-top: 4px solid #846122;
+  }
+  .link-result {
+    display: none;
+    margin-top: 14px;
+    padding: 12px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Criador de Formulários & Links para Pacientes</h1>
+    <p>Monte questionários, envie o link seguro pelo WhatsApp e receba as respostas no prontuário</p>
+  </div>
+  <button class="btn btn-gold" onclick="abrirBuilder()">+ Novo Formulário</button>
+</div>
+
+<div class="form-grid">
+  <!-- Gerador de Link Rápido -->
+  <div class="card col-5">
+    <h2 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:12px;">Enviar Formulário ao Paciente</h2>
+    <div class="field" style="margin-bottom:10px;">
+      <label>1. Escolha o Formulário</label>
+      <select id="envioFormId">
+        {% for f in formularios if f.ativo %}
+        <option value="{{ f.id }}">{{ f.titulo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>2. Escolha o Paciente</label>
+      <select id="envioPacienteId">
+        <option value="">Selecione o paciente...</option>
+        {% for p in pacientes %}
+        <option value="{{ p.id }}">{{ p.nome_completo }} ({{ p.prontuario }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-gold" style="width:100%; justify-content:center;" onclick="gerarLink()">🔗 Gerar Link Seguro</button>
+
+    <div class="link-result" id="linkResultBox">
+      <div style="font-size:0.78rem; font-weight:700; color:#065f46; margin-bottom:6px;">Link exclusivo gerado com sucesso!</div>
+      <input type="text" id="linkGeradoUrl" readonly style="width:100%; padding:7px; border:1px solid #6ee7b7; border-radius:5px; font-size:0.8rem; margin-bottom:8px;">
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-dark" style="flex:1; justify-content:center;" onclick="copiarLink()">📋 Copiar Link</button>
+        <a id="btnWhatsappLink" href="#" target="_blank" class="btn" style="flex:1; justify-content:center; background:#059669; color:#fff;">💬 Enviar no WhatsApp</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modelos de Formulários -->
+  <div class="card col-7">
+    <h2 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:12px;">Modelos Disponíveis</h2>
+    <div class="table-responsive">
+    <table class="data-table">
+      <thead><tr><th>Título</th><th>Perguntas</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for f in formularios if f.ativo %}
+        <tr>
+          <td>
+            <strong>{{ f.titulo }}</strong>
+            {% if f.sigiloso %}<span class="badge badge-warn" style="margin-left:5px;">🔒 Sigiloso</span>{% endif %}
+            {% if f.descricao %}<div style="font-size:0.74rem; color:#64748b;">{{ f.descricao }}</div>{% endif %}
+          </td>
+          <td><span class="badge badge-slate">{{ f.campos|length }} campos</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline" style="padding:4px 10px; font-size:0.76rem;" onclick='editarFormulario({{ f.id }}, {{ f.titulo|tojson }}, {{ f.descricao|tojson }}, {{ f.campos|tojson }}, {{ f.sigiloso|tojson }})'>Editar</button>
+            <button class="btn btn-outline" style="padding:4px 10px; font-size:0.76rem; color:#dc2626;" onclick="excluirFormulario({{ f.id }})">Excluir</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico de Envios e Respostas -->
+<div class="card">
+  <h2 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:12px;">Envios & Respostas Recebidas</h2>
+  {% if envios %}
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>Paciente</th><th>Formulário</th><th>Status</th><th>Enviado em</th><th>Ações</th></tr></thead>
+    <tbody>
+      {% for e in envios %}
+      <tr>
+        <td><a href="{{ url_for('paciente_detalhe', paciente_id=e.paciente_id, aba='formularios') }}" style="font-weight:700; color:#0f172a;">{{ e.paciente.nome_completo }}</a></td>
+        <td>{{ e.formulario.titulo if e.formulario else '—' }}</td>
+        <td>
+          {% if e.status == 'Respondido' %}
+          <span class="badge badge-ok">Respondido</span>
+          {% else %}
+          <span class="badge badge-warn">Aguardando</span>
+          {% endif %}
+        </td>
+        <td>{{ e.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>
+          {% if e.status == 'Respondido' %}
+            {% if e.formulario and e.formulario.sigiloso and not current_user.pode_ver_clinico %}
+              <span class="badge badge-slate">🔒 Restrito ao Psicanalista</span>
+            {% else %}
+              <button class="btn btn-dark" style="padding:4px 10px; font-size:0.76rem;" onclick='verRespostas({{ e.paciente.nome_completo|tojson }}, {{ (e.formulario.titulo if e.formulario else "")|tojson }}, {{ e.respostas|tojson }})'>Ver Respostas</button>
+            {% endif %}
+          {% else %}
+            <button class="btn btn-outline" style="padding:4px 10px; font-size:0.76rem;" onclick="copiarTexto('{{ base_url }}/responder/{{ e.token }}')">Copiar Link</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="color:#64748b; font-size:0.86rem;">Nenhum formulário enviado ainda.</p>
+  {% endif %}
+</div>
+
+<!-- Modal Form Builder -->
+<div class="modal-backdrop" id="modalBuilder">
+  <div class="modal-box">
+    <h3 id="builderHeading" style="font-family:'Cinzel',serif; margin-bottom:12px;">Criar Novo Formulário</h3>
+    <input type="hidden" id="builderFormId">
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div class="field col-6"><label>Título do Formulário *</label><input type="text" id="builderTitulo" placeholder="Ex: Ficha de Triagem Online"></div>
+      <div class="field col-6"><label>Descrição (opcional)</label><input type="text" id="builderDesc" placeholder="Breve instrução para o paciente"></div>
+      <div class="col-12">
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.84rem; cursor:pointer;">
+          <input type="checkbox" id="builderSigiloso"> 🔒 Formulário Sigiloso (Anamnese — respostas visíveis apenas para Psicanalista e notificadas ao WhatsApp do Psicanalista)
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <strong style="font-size:0.8rem; text-transform:uppercase; color:#475569;">Perguntas do Formulário</strong>
+      <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="adicionarCampo()">+ Adicionar Pergunta</button>
+    </div>
+    <div id="builderCamposContainer"></div>
+
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+      <button class="btn btn-outline" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarFormulario()">Salvar Formulário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ver Respostas -->
+<div class="modal-backdrop" id="modalRespostas">
+  <div class="modal-box">
+    <h3 id="respTitulo" style="font-family:'Cinzel',serif; margin-bottom:4px;"></h3>
+    <p id="respSub" style="font-size:0.82rem; color:#64748b; margin-bottom:14px;"></p>
+    <div id="respConteudo" style="display:flex; flex-direction:column; gap:10px;"></div>
+    <div style="text-align:right; margin-top:16px;">
+      <button class="btn btn-dark" onclick="fecharModais()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CSRF_TOKEN = "{{ csrf_token() }}";
+
+  function fecharModais() {
+    document.getElementById('modalBuilder').classList.remove('open');
+    document.getElementById('modalRespostas').classList.remove('open');
+  }
+
+  function adicionarCampo(c = null) {
+    const container = document.getElementById('builderCamposContainer');
+    const row = document.createElement('div');
+    row.className = 'builder-row';
+    const opcoesStr = c && c.opcoes ? c.opcoes.join(', ') : '';
+    row.innerHTML = `
+      <input type="text" class="c-label" placeholder="Texto da pergunta..." value="${c ? (c.label || '').replace(/"/g, '&quot;') : ''}">
+      <select class="c-tipo" onchange="this.nextElementSibling.style.display = this.value === 'multipla' ? 'block' : 'none'">
+        <option value="texto" ${c?.tipo === 'texto' ? 'selected' : ''}>Texto Curto</option>
+        <option value="paragrafo" ${c?.tipo === 'paragrafo' ? 'selected' : ''}>Parágrafo</option>
+        <option value="sim_nao" ${c?.tipo === 'sim_nao' ? 'selected' : ''}>Sim / Não</option>
+        <option value="data" ${c?.tipo === 'data' ? 'selected' : ''}>Data</option>
+        <option value="multipla" ${c?.tipo === 'multipla' ? 'selected' : ''}>Múltipla Escolha</option>
+      </select>
+      <input type="text" class="c-opcoes" placeholder="Opções separadas por vírgula" value="${opcoesStr.replace(/"/g, '&quot;')}" style="display:${c?.tipo === 'multipla' ? 'block' : 'none'};">
+      <label style="font-size:0.74rem; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+        <input type="checkbox" class="c-obrig" ${c?.obrigatorio ? 'checked' : ''}> Obrig.
+      </label>
+      <button type="button" onclick="this.parentElement.remove()" style="border:none; background:transparent; color:#dc2626; cursor:pointer; font-weight:700;">✕</button>
+    `;
+    container.appendChild(row);
+  }
+
+  function abrirBuilder() {
+    document.getElementById('builderHeading').innerText = 'Criar Novo Formulário';
+    document.getElementById('builderFormId').value = '';
+    document.getElementById('builderTitulo').value = '';
+    document.getElementById('builderDesc').value = '';
+    document.getElementById('builderSigiloso').checked = false;
+    document.getElementById('builderCamposContainer').innerHTML = '';
+    adicionarCampo({ label: 'Nome Completo', tipo: 'texto', obrigatorio: true, opcoes: [] });
+    document.getElementById('modalBuilder').classList.add('open');
+  }
+
+  function editarFormulario(id, titulo, desc, campos, sigiloso = false) {
+    document.getElementById('builderHeading').innerText = 'Editar Formulário';
+    document.getElementById('builderFormId').value = id;
+    document.getElementById('builderTitulo').value = titulo;
+    document.getElementById('builderDesc').value = desc || '';
+    document.getElementById('builderSigiloso').checked = !!sigiloso;
+    document.getElementById('builderCamposContainer').innerHTML = '';
+    (campos || []).forEach(c => adicionarCampo(c));
+    document.getElementById('modalBuilder').classList.add('open');
+  }
+
+  async function salvarFormulario() {
+    const id = document.getElementById('builderFormId').value;
+    const titulo = document.getElementById('builderTitulo').value.trim();
+    const descricao = document.getElementById('builderDesc').value.trim();
+    const sigiloso = document.getElementById('builderSigiloso').checked;
+    const campos = [];
+    document.querySelectorAll('#builderCamposContainer .builder-row').forEach((row, idx) => {
+      const label = row.querySelector('.c-label').value.trim();
+      if (!label) return;
+      const tipo = row.querySelector('.c-tipo').value;
+      const opcoes = row.querySelector('.c-opcoes').value.split(',').map(s => s.trim()).filter(Boolean);
+      const obrigatorio = row.querySelector('.c-obrig').checked;
+      campos.push({ id: `campo_${idx + 1}`, label, tipo, obrigatorio, opcoes });
+    });
+    if (!titulo || campos.length === 0) return alert('Informe o título e ao menos 1 pergunta.');
+    const r = await fetch('/api/formularios/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ id: id || null, titulo, descricao, sigiloso, campos })
+    });
+    if (r.ok) location.reload();
+    else alert('Erro ao salvar formulário.');
+  }
+
+  async function excluirFormulario(id) {
+    if (!confirm('Deseja excluir/arquivar este modelo de formulário?')) return;
+    const r = await fetch(`/api/formularios/${id}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+    });
+    if (r.ok) location.reload();
+  }
+
+  async function gerarLink() {
+    const formulario_id = document.getElementById('envioFormId').value;
+    const paciente_id = document.getElementById('envioPacienteId').value;
+    if (!paciente_id) return alert('Selecione um paciente.');
+    const r = await fetch('/api/formularios/gerar-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ formulario_id, paciente_id })
+    });
+    const d = await r.json();
+    if (!r.ok) return alert(d.erro || 'Erro ao gerar link.');
+    document.getElementById('linkGeradoUrl').value = d.url;
+    document.getElementById('btnWhatsappLink').href = d.whatsapp_url;
+    document.getElementById('linkResultBox').style.display = 'block';
+  }
+
+  function copiarLink() {
+    copiarTexto(document.getElementById('linkGeradoUrl').value);
+  }
+
+  function copiarTexto(txt) {
+    navigator.clipboard.writeText(txt).then(() => alert('Link copiado para a área de transferência!'));
+  }
+
+  function verRespostas(paciente, formTitulo, respostas) {
+    document.getElementById('respTitulo').innerText = formTitulo;
+    document.getElementById('respSub').innerText = 'Paciente: ' + paciente;
+    const cont = document.getElementById('respConteudo');
+    cont.innerHTML = '';
+    Object.entries(respostas || {}).forEach(([pergunta, resp]) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px;';
+      div.innerHTML = `<div style="font-size:0.72rem; font-weight:700; color:#475569; text-transform:uppercase;">${pergunta}</div><div style="font-size:0.86rem; margin-top:3px; color:#0f172a;">${resp || '—'}</div>`;
+      cont.appendChild(div);
+    });
+    document.getElementById('modalRespostas').classList.add('open');
+  }
+</script>
+{% endblock %}

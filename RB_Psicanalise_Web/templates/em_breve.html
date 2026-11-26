@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ titulo }}</h1>
+    <p>Módulo planejado para a {{ etapa }} do cronograma.</p>
+  </div>
+</div>
+<div class="card">
+  <p style="color:#475569; font-size:0.92rem;">
+    Esta tela será ativada na <strong>{{ etapa }}</strong>, logo após você validar e aprovar a Etapa 1 (Login, Perfis, Banco SQLite, Pacientes e Impressão A4).
+  </p>
+</div>
+{% endblock %}

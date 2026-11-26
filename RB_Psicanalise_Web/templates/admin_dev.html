@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Manutenção (Dev) — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Painel de Manutenção & Segurança (Admin Dev)</h1>
+    <p>Gestão de usuários, URL base para links públicos e backup do banco SQLite</p>
+  </div>
+  <a href="{{ url_for('admin_dev_backup') }}" class="btn btn-gold">⬇️ Baixar Backup do Banco (.db)</a>
+</div>
+
+<div class="form-grid">
+  <div class="card col-6">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:10px;">Configurações de Link & Roteamento WhatsApp</h3>
+    <form method="POST" action="{{ url_for('admin_dev') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="acao" value="salvar_configs">
+      <div class="field" style="margin-bottom:10px;">
+        <label>APP_BASE_URL (Endereço público/túnel dos formulários)</label>
+        <input type="text" name="app_base_url" value="{{ app_base_url }}" placeholder="https://sua-clinica.com">
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>WhatsApp do(a) Psicanalista (Recebe Anamneses Sigilosas)</label>
+        <input type="text" name="whatsapp_psicanalista" value="{{ whatsapp_psicanalista }}" placeholder="(11) 99999-9999">
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>WhatsApp de Atendimento da Clínica (Demais Formulários)</label>
+        <input type="text" name="whatsapp_atendimento" value="{{ whatsapp_atendimento }}" placeholder="(11) 98888-8888">
+      </div>
+      <button type="submit" class="btn btn-dark">Salvar Configurações</button>
+    </form>
+  </div>
+
+  <div class="card col-6">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:10px;">Informações Técnicas & Atualizações</h3>
+    <p style="font-size:0.82rem; color:#475569; margin-bottom:6px;"><strong>Versão Instalada:</strong> v{{ app_version }}</p>
+    <p style="font-size:0.82rem; color:#475569; margin-bottom:6px; word-break:break-all;"><strong>Pasta Persistente de Dados:</strong><br>{{ data_dir }}</p>
+    <p style="font-size:0.82rem; color:#475569; margin-bottom:12px; word-break:break-all;"><strong>Banco Conectado:</strong><br>{{ db_uri }}</p>
+    <button type="button" class="btn btn-outline" onclick="verificarAgora()">🔄 Verificar Atualizações no GitHub</button>
+    <div id="statusCheckUpdate" style="font-size:0.8rem; margin-top:8px; color:#334155;"></div>
+  </div>
+</div>
+
+<script>
+  async function verificarAgora() {
+    const el = document.getElementById('statusCheckUpdate');
+    el.innerText = 'Consultando GitHub Releases...';
+    const r = await fetch('/api/sistema/checar-atualizacao');
+    const d = await r.json();
+    sessionStorage.setItem('rb_update_check', JSON.stringify(d));
+    if (d.disponivel) {
+      el.innerHTML = `<strong style="color:#b45309;">Nova versão v${d.versao_remota} encontrada!</strong>`;
+      mostrarBannerUpdate(d);
+    } else if (d.ok) {
+      el.innerHTML = `<strong style="color:#065f46;">Sistema atualizado (v${d.versao_atual}).</strong>`;
+    } else {
+      el.innerText = 'Nenhuma release publicada ou sem conexão no momento.';
+    }
+  }
+</script>
+
+<div class="card">
+  <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:12px;">Cadastrar Novo Usuário</h3>
+  <form method="POST" action="{{ url_for('admin_dev') }}" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="acao" value="criar_usuario">
+    <div class="field col-3"><label>Nome</label><input type="text" name="nome" required></div>
+    <div class="field col-3"><label>E-mail</label><input type="email" name="email" required></div>
+    <div class="field col-2"><label>Senha</label><input type="password" name="senha" required></div>
+    <div class="field col-2"><label>Perfil</label>
+      <select name="perfil">
+        <option value="atendente">atendente</option>
+        <option value="psicanalista">psicanalista</option>
+        <option value="admin_dev">admin_dev</option>
+      </select>
+    </div>
+    <div class="col-2" style="display:flex; align-items:flex-end;"><button type="submit" class="btn btn-gold" style="width:100%; justify-content:center;">+ Criar</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:12px;">Usuários Cadastrados</h3>
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Ação</th></tr></thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.email }}</td>
+        <td><span class="badge badge-slate">{{ u.perfil }}</span></td>
+        <td>{% if u.ativo %}<span class="badge badge-ok">Ativo</span>{% else %}<span class="badge badge-no">Inativo</span>{% endif %}</td>
+        <td>
+          {% if u.id != current_user.id %}
+          <form method="POST" action="{{ url_for('admin_dev') }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="acao" value="toggle_usuario">
+            <input type="hidden" name="usuario_id" value="{{ u.id }}">
+            <button type="submit" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;">{% if u.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+          </form>
+          {% else %}
+          <span style="font-size:0.75rem; color:#64748b;">(Você)</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

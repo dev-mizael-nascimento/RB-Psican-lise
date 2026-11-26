@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Agenda Visual — RB Psicanálise{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<style>
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; align-items: center; }
+  .leg-item { display: flex; align-items: center; gap: 5px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .fc .fc-button-primary { background-color: #1e293b; border-color: #1e293b; }
+  .fc .fc-button-primary:hover, .fc .fc-button-active { background-color: #846122 !important; border-color: #846122 !important; }
+  .fc-event { cursor: pointer; font-size: 0.78rem; padding: 2px 4px; }
+  @media (max-width: 768px) {
+    .fc .fc-toolbar { flex-direction: column; gap: 8px; }
+    .fc .fc-toolbar-title { font-size: 1.05rem !important; }
+  }
+
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(9,13,22,0.6);
+    z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 500px;
+    padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border-top: 4px solid #846122;
+  }
+  .modal-box h3 { font-family: 'Cinzel', serif; font-size: 1.02rem; margin-bottom: 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Calendário Visual de Agenda</h1>
+    <p>Clique em um horário para agendar ou arraste uma sessão para remarcar</p>
+  </div>
+  <div class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:#1e293b;"></span> Agendado</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#059669;"></span> Compareceu + Pago</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#d97706;"></span> Compareceu + Pendente</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#dc2626;"></span> Falta / Cancelado</span>
+    <button class="btn btn-gold" onclick="abrirNovoAgendamento()">+ Novo Agendamento</button>
+  </div>
+</div>
+
+<div class="card">
+  <div id="calendar"></div>
+</div>
+
+<!-- Modal Novo / Editar Agendamento -->
+<div class="modal-backdrop" id="modalAgenda">
+  <div class="modal-box">
+    <h3 id="modalAgTitulo">Novo Agendamento</h3>
+    <input type="hidden" id="agId">
+
+    <div class="form-grid">
+      <div class="field col-12" id="agPacienteWrap">
+        <label>Paciente *</label>
+        <select id="agPacienteId">
+          <option value="">Selecione o paciente...</option>
+          {% for p in pacientes %}
+          <option value="{{ p.id }}">{{ p.nome_completo }} ({{ p.prontuario }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field col-6">
+        <label>Início</label>
+        <input type="datetime-local" id="agInicio">
+      </div>
+      <div class="field col-6">
+        <label>Fim</label>
+        <input type="datetime-local" id="agFim">
+      </div>
+      <div class="field col-4">
+        <label>Modalidade</label>
+        <select id="agModalidade">
+          <option value="Presencial">Presencial</option>
+          <option value="Online">Online</option>
+        </select>
+      </div>
+      <div class="field col-4">
+        <label>Compareceu</label>
+        <select id="agCompareceu">
+          <option value="">— (Agendado)</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="field col-4">
+        <label>Pagamento</label>
+        <select id="agPagamento">
+          <option value="Pendente">Pendente</option>
+          <option value="Pago">Pago</option>
+        </select>
+      </div>
+      <div class="field col-4">
+        <label>Valor (R$)</label>
+        <input type="text" id="agValor" placeholder="250.00">
+      </div>
+      <div class="field col-8">
+        <label>Observação</label>
+        <input type="text" id="agObs" placeholder="Nota rápida da sessão...">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; margin-top:18px; gap:8px;">
+      <div>
+        <button class="btn btn-outline" id="btnExcluirAg" style="color:#dc2626; border-color:#fecaca; display:none;" onclick="excluirAgendamento()">Excluir</button>
+        <a id="linkProntuarioAg" href="#" class="btn btn-outline" style="display:none;">Abrir Prontuário</a>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-outline" onclick="fecharModalAg()">Cancelar</button>
+        <button class="btn btn-gold" onclick="salvarAgendamento()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CSRF_TOKEN = "{{ csrf_token() }}";
+  let calendar;
+
+  function toLocalInput(dt) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('calendar');
+    calendar = new FullCalendar.Calendar(el, {
+      locale: 'pt-br',
+      initialView: 'timeGridWeek',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+      },
+      buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia', list: 'Lista' },
+      slotMinTime: '07:00:00',
+      slotMaxTime: '22:00:00',
+      allDaySlot: false,
+      selectable: true,
+      editable: true,
+      events: '/api/agendamentos',
+      select: function(info) {
+        const inicio = info.start;
+        const fim = new Date(inicio.getTime() + 50 * 60000);
+        abrirNovoAgendamento(toLocalInput(inicio), toLocalInput(fim));
+      },
+      eventClick: function(info) {
+        const ev = info.event;
+        const p = ev.extendedProps;
+        document.getElementById('modalAgTitulo').innerText = 'Sessão: ' + p.paciente_nome;
+        document.getElementById('agId').value = ev.id;
+        document.getElementById('agPacienteWrap').style.display = 'none';
+        document.getElementById('agInicio').value = toLocalInput(ev.start);
+        document.getElementById('agFim').value = ev.end ? toLocalInput(ev.end) : toLocalInput(new Date(ev.start.getTime() + 50*60000));
+        document.getElementById('agModalidade').value = p.modalidade || 'Presencial';
+        document.getElementById('agCompareceu').value = p.compareceu || '';
+        document.getElementById('agPagamento').value = p.pagamento || 'Pendente';
+        document.getElementById('agValor').value = p.valor || '';
+        document.getElementById('agObs').value = p.observacao || '';
+        document.getElementById('btnExcluirAg').style.display = 'inline-flex';
+        const linkP = document.getElementById('linkProntuarioAg');
+        linkP.href = `/paciente/${p.paciente_id}?aba=sessoes`;
+        linkP.style.display = 'inline-flex';
+        document.getElementById('modalAgenda').classList.add('open');
+      },
+      eventDrop: async function(info) {
+        await remarcarEvento(info.event);
+      },
+      eventResize: async function(info) {
+        await remarcarEvento(info.event);
+      }
+    });
+    calendar.render();
+  });
+
+  async function remarcarEvento(ev) {
+    const fim = ev.end ? ev.end : new Date(ev.start.getTime() + 50 * 60000);
+    await fetch(`/api/agendamentos/${ev.id}/atualizar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ inicio: toLocalInput(ev.start), fim: toLocalInput(fim) })
+    });
+    calendar.refetchEvents();
+  }
+
+  function abrirNovoAgendamento(inicioStr = '', fimStr = '') {
+    document.getElementById('modalAgTitulo').innerText = 'Novo Agendamento';
+    document.getElementById('agId').value = '';
+    document.getElementById('agPacienteWrap').style.display = 'block';
+    document.getElementById('agPacienteId').value = '';
+    if (!inicioStr) {
+      const agora = new Date();
+      agora.setMinutes(0, 0, 0);
+      inicioStr = toLocalInput(agora);
+      fimStr = toLocalInput(new Date(agora.getTime() + 50 * 60000));
+    }
+    document.getElementById('agInicio').value = inicioStr;
+    document.getElementById('agFim').value = fimStr;
+    document.getElementById('agModalidade').value = 'Presencial';
+    document.getElementById('agCompareceu').value = '';
+    document.getElementById('agPagamento').value = 'Pendente';
+    document.getElementById('agValor').value = '';
+    document.getElementById('agObs').value = '';
+    document.getElementById('btnExcluirAg').style.display = 'none';
+    document.getElementById('linkProntuarioAg').style.display = 'none';
+    document.getElementById('modalAgenda').classList.add('open');
+  }
+
+  function fecharModalAg() {
+    document.getElementById('modalAgenda').classList.remove('open');
+  }
+
+  async function salvarAgendamento() {
+    const id = document.getElementById('agId').value;
+    const payload = {
+      paciente_id: document.getElementById('agPacienteId').value,
+      inicio: document.getElementById('agInicio').value,
+      fim: document.getElementById('agFim').value,
+      modalidade: document.getElementById('agModalidade').value,
+      compareceu: document.getElementById('agCompareceu').value,
+      pagamento: document.getElementById('agPagamento').value,
+      valor: document.getElementById('agValor').value,
+      observacao: document.getElementById('agObs').value
+    };
+    if (!id && !payload.paciente_id) return alert('Selecione um paciente.');
+    const url = id ? `/api/agendamentos/${id}/atualizar` : '/api/agendamentos';
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      return alert(d.erro || 'Erro ao salvar.');
+    }
+    fecharModalAg();
+    calendar.refetchEvents();
+  }
+
+  async function excluirAgendamento() {
+    const id = document.getElementById('agId').value;
+    if (!id || !confirm('Deseja excluir este agendamento?')) return;
+    await fetch(`/api/agendamentos/${id}/excluir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+    });
+    fecharModalAg();
+    calendar.refetchEvents();
+  }
+</script>
+{% endblock %}

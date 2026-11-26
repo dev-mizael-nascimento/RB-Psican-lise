@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Novo Paciente — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Novo Paciente — Protocolo & Cadastro</h1>
+    <p>Prontuário sugerido: <strong>{{ proximo_prontuario }}</strong></p>
+  </div>
+  <a href="{{ url_for('pacientes_lista') }}" class="btn btn-outline">Voltar</a>
+</div>
+
+<form method="POST" action="{{ url_for('paciente_novo') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="card">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:12px; color:#846122;">01. Identificação Pessoal</h3>
+    <div class="form-grid">
+      <div class="field col-3"><label>Prontuário Nº</label><input type="text" name="prontuario" value="{{ proximo_prontuario }}"></div>
+      <div class="field col-6"><label>Nome Completo *</label><input type="text" name="nome_completo" required></div>
+      <div class="field col-3"><label>Data Início</label><input type="text" name="data_inicio" value="{{ hoje_str }}"></div>
+
+      <div class="field col-3"><label>Data de Nascimento</label><input type="text" name="data_nascimento" placeholder="DD/MM/AAAA"></div>
+      <div class="field col-2"><label>Idade</label><input type="text" name="idade" placeholder="Ex: 34 anos"></div>
+      <div class="field col-3"><label>Estado Civil</label>
+        <select name="estado_civil">
+          <option value="">Selecione...</option>
+          <option>Solteiro(a)</option><option>Casado(a)</option><option>União Estável</option>
+          <option>Divorciado(a)</option><option>Viúvo(a)</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="field col-4"><label>Profissão</label><input type="text" name="profissao"></div>
+
+      <div class="field col-4"><label>Escolaridade</label><input type="text" name="escolaridade"></div>
+      <div class="field col-4"><label>CPF</label><input type="text" name="cpf" placeholder="000.000.000-00"></div>
+      <div class="field col-4"><label>RG / Órgão Emissor</label><input type="text" name="rg"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:12px; color:#846122;">02. Endereço, Contato & Emergência</h3>
+    <div class="form-grid">
+      <div class="field col-6"><label>Endereço</label><input type="text" name="endereco"></div>
+      <div class="field col-4"><label>Cidade / UF</label><input type="text" name="cidade"></div>
+      <div class="field col-2"><label>CEP</label><input type="text" name="cep"></div>
+      <div class="field col-4"><label>Telefone / WhatsApp</label><input type="text" name="telefone" placeholder="(00) 00000-0000"></div>
+      <div class="field col-8"><label>E-mail</label><input type="email" name="email"></div>
+      <div class="field col-5"><label>Contato Emergencial</label><input type="text" name="contato_emergencial"></div>
+      <div class="field col-3"><label>Parentesco / Vínculo</label><input type="text" name="grau_parentesco"></div>
+      <div class="field col-4"><label>Telefone Emergencial</label><input type="text" name="telefone_emergencia"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:12px; color:#846122;">03. Histórico Inicial & Enquadre</h3>
+    <div class="form-grid">
+      <div class="field col-6"><label>Como conheceu o atendimento?</label><input type="text" name="como_conheceu"></div>
+      <div class="field col-3"><label>Já fez psicanálise/terapia?</label>
+        <select name="ja_fez_terapia"><option value="nao">Não</option><option value="sim">Sim</option></select>
+      </div>
+      <div class="field col-3"><label>Detalhes terapia anterior</label><input type="text" name="detalhe_terapia"></div>
+
+      <div class="field col-3"><label>Faz uso de medicação?</label>
+        <select name="faz_uso_medicacao"><option value="nao">Não</option><option value="sim">Sim</option></select>
+      </div>
+      <div class="field col-3"><label>Qual medicação?</label><input type="text" name="qual_medicacao"></div>
+      <div class="field col-3"><label>Acompanhamento médico?</label>
+        <select name="acompanhamento_medico"><option value="nao">Não</option><option value="sim">Sim</option></select>
+      </div>
+      <div class="field col-3"><label>Especialidade / Médico</label><input type="text" name="detalhe_medico"></div>
+
+      <div class="field col-12"><label>Condições de Saúde Importantes</label><textarea name="condicoes_saude" rows="2"></textarea></div>
+      <div class="field col-12"><label>Queixa Principal (Síntese)</label><textarea name="queixa_principal" rows="2"></textarea></div>
+
+      <div class="field col-3"><label>Frequência</label><input type="text" name="frequencia" value="1x por semana"></div>
+      <div class="field col-3"><label>Duração</label><input type="text" name="duracao" value="50 minutos"></div>
+      <div class="field col-3"><label>Honorários (R$)</label><input type="text" name="honorarios" placeholder="R$ 0,00"></div>
+      <div class="field col-3"><label>Formato</label>
+        <select name="formato_atendimento"><option>Presencial</option><option>Online</option><option>Híbrido</option></select>
+      </div>
+      <div class="col-12" style="margin-top:6px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
+          <input type="checkbox" name="termo_aceito"> Termo de Consentimento informado e aceito pelo(a) analisando(a).
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; justify-content:flex-end; gap:10px;">
+    <a href="{{ url_for('pacientes_lista') }}" class="btn btn-outline">Cancelar</a>
+    <button type="submit" class="btn btn-gold">Salvar Cadastro do Paciente</button>
+  </div>
+</form>
+{% endblock %}

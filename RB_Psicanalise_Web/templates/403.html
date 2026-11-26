@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Acesso Restrito — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px; margin: 40px auto; text-align:center; padding: 36px;">
+  <h2 style="font-family:'Cinzel',serif; color:#991b1b; margin-bottom:10px;">403 — Acesso Restrito por Sigilo Clínico</h2>
+  <p style="color:#475569; font-size:0.9rem; margin-bottom:20px;">
+    O seu perfil atual (<strong>{{ current_user.perfil }}</strong>) não possui permissão para visualizar ou editar esta área sigilosa.
+  </p>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-dark">Voltar ao Dashboard</a>
+</div>
+{% endblock %}

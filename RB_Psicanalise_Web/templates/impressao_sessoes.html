@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Impressão Controle de Sessões — {{ paciente.nome_completo }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; }
+    .print-bar { position: sticky; top: 0; z-index: 100; background: #090d16; color: #fff; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg,#b0893f,#846122); color: #fff; font-size: 0.82rem; }
+    .a4-page { background: #fff; width: 210mm; min-height: 297mm; padding: 13mm 15mm; margin: 24px auto; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 10px 30px rgba(0,0,0,0.14); }
+    .page-frame { position: absolute; top: 6mm; left: 7mm; right: 7mm; bottom: 6mm; border: 1px solid #cbd5e1; pointer-events: none; }
+    .header-main { border-bottom: 2px solid #1e293b; padding-bottom: 9px; margin-bottom: 12px; text-align: center; }
+    .header-main img { max-width: 240px; max-height: 68px; object-fit: contain; margin-bottom: 4px; }
+    .header-main h1 { font-family: 'Cinzel', serif; font-size: 1.12rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .meta-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; margin-top: 6px; font-size: 0.74rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    th { background: #1e293b; color: #fff; font-family: 'Cinzel', serif; font-size: 0.66rem; padding: 6px 5px; border: 1px solid #334155; text-transform: uppercase; }
+    td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; }
+    td.obs { text-align: left; }
+    .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+    .scard { background: #f8fafc; border: 1px solid #e2e8f0; border-top: 2.5px solid #846122; padding: 6px; text-align: center; }
+    .slbl { font-size: 0.6rem; color: #64748b; text-transform: uppercase; font-weight: 700; }
+    .sval { font-family: 'Cinzel', serif; font-size: 0.9rem; font-weight: 700; margin-top: 2px; }
+    .footer { border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 0.64rem; color: #94a3b8; }
+    @media print {
+      body { background: #fff; }
+      .print-bar { display: none !important; }
+      .a4-page { margin: 0; box-shadow: none; width: 100%; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>RB Psicanálise — Impressão Controle Individual de Sessões</span>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / Gerar PDF (A4)</button>
+  </div>
+
+  <article class="a4-page">
+    <div class="page-frame"></div>
+    <div>
+      <header class="header-main">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RB Psicanálise">
+        <h1>Ficha de Controle de Sessões</h1>
+        <div class="meta-bar">
+          <div><strong>PACIENTE:</strong> {{ paciente.nome_completo }}</div>
+          <div><strong>PRONTUÁRIO:</strong> {{ paciente.prontuario }}</div>
+          <div><strong>EMISSÃO:</strong> {{ hoje.strftime('%d/%m/%Y') }}</div>
+        </div>
+      </header>
+
+      <table>
+        <thead>
+          <tr><th>Sessão</th><th>Data</th><th>Horário</th><th>Compareceu</th><th>Pagamento</th><th>Valor</th><th>Observação</th></tr>
+        </thead>
+        <tbody>
+          {% for s in sessoes %}
+          <tr>
+            <td><strong>{{ "%02d"|format(loop.index) }}</strong></td>
+            <td>{{ s.inicio.strftime('%d/%m/%Y') }}</td>
+            <td>{{ s.inicio.strftime('%H:%M') }}</td>
+            <td>{{ s.compareceu or '—' }}</td>
+            <td>{{ s.pagamento }}</td>
+            <td>R$ {{ "%.2f"|format(s.valor or 0) }}</td>
+            <td class="obs">{{ s.observacao }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7">Nenhuma sessão registrada até o momento.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="scard"><div class="slbl">Sessões</div><div class="sval">{{ resumo.total }}</div></div>
+        <div class="scard"><div class="slbl">Compareceu</div><div class="sval">{{ resumo.sim }}</div></div>
+        <div class="scard"><div class="slbl">Faltas</div><div class="sval">{{ resumo.nao }}</div></div>
+        <div class="scard"><div class="slbl">Pago</div><div class="sval">R$ {{ "%.2f"|format(resumo.total_pago_rs) }}</div></div>
+        <div class="scard"><div class="slbl">Pendente</div><div class="sval">R$ {{ "%.2f"|format(resumo.total_pendente_rs) }}</div></div>
+      </div>
+    </div>
+    <footer class="footer">
+      <span>RB Psicanálise • Controle Individual de Sessões</span>
+      <span>Emitido em {{ hoje.strftime('%d/%m/%Y %H:%M') }}</span>
+    </footer>
+  </article>
+</body>
+</html>

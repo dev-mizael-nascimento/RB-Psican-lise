@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Pacientes — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Pacientes & Prontuários</h1>
+    <p>Cadastro unificado, anamnese sigilosa e controle individual de sessões</p>
+  </div>
+  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente</a>
+</div>
+
+<div class="card">
+  <form method="GET" action="{{ url_for('pacientes_lista') }}" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+    <input type="text" name="q" value="{{ busca }}" placeholder="Pesquisar por nome, nº de prontuário, CPF ou telefone..." style="flex:1; min-width:200px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px;">
+    <button type="submit" class="btn btn-dark">Filtrar</button>
+    {% if busca %}<a href="{{ url_for('pacientes_lista') }}" class="btn btn-outline">Limpar</a>{% endif %}
+  </form>
+
+  {% if pacientes %}
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Prontuário</th>
+        <th>Nome do Paciente</th>
+        <th>Telefone / WhatsApp</th>
+        <th>E-mail</th>
+        <th>Fase</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pacientes %}
+      <tr>
+        <td><strong>{{ p.prontuario }}</strong></td>
+        <td>{{ p.nome_completo }}</td>
+        <td>{{ p.telefone or '—' }}</td>
+        <td>{{ p.email or '—' }}</td>
+        <td><span class="badge badge-slate">{{ p.kanban_coluna.titulo if p.kanban_coluna else '—' }}</span></td>
+        <td>
+          <a href="{{ url_for('paciente_detalhe', paciente_id=p.id) }}" class="btn btn-dark" style="padding:5px 12px; font-size:0.78rem;">Abrir Prontuário</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="color:#64748b; font-size:0.88rem;">Nenhum paciente encontrado.</p>
+  {% endif %}
+</div>
+{% endblock %}

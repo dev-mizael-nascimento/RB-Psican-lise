@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}{{ paciente.nome_completo }} — Prontuário{% endblock %}
+{% block head_extra %}
+<style>
+  .tabs { display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-link {
+    padding: 10px 16px;
+    text-decoration: none;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.86rem;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+  }
+  .tab-link.active { color: #846122; border-bottom-color: #846122; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ paciente.nome_completo }}</h1>
+    <p>Prontuário Nº <strong>{{ paciente.prontuario }}</strong> • Tel: {{ paciente.telefone or '—' }} • E-mail: {{ paciente.email or '—' }}</p>
+  </div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='cadastro') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Cadastro A4</a>
+    {% if current_user.pode_ver_clinico %}
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='anamnese') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Anamnese A4</a>
+    {% endif %}
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='sessoes') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Sessões A4</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='cadastro') }}" class="tab-link {% if aba == 'cadastro' %}active{% endif %}">01. Protocolo & Cadastro</a>
+  {% if current_user.pode_ver_clinico %}
+  <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='anamnese') }}" class="tab-link {% if aba == 'anamnese' %}active{% endif %}">02. Anamnese Clínica (Sigilosa)</a>
+  {% endif %}
+  <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='sessoes') }}" class="tab-link {% if aba == 'sessoes' %}active{% endif %}">03. Controle de Sessões ({{ resumo.total }})</a>
+  <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='formularios') }}" class="tab-link {% if aba == 'formularios' %}active{% endif %}">04. Formulários ({{ envios|length }})</a>
+</div>
+
+{% if aba == 'cadastro' %}
+<form method="POST" action="{{ url_for('paciente_salvar_cadastro', paciente_id=paciente.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card">
+    <div class="form-grid">
+      <div class="field col-6"><label>Nome Completo</label><input type="text" name="nome_completo" value="{{ paciente.nome_completo }}" required></div>
+      <div class="field col-3"><label>Data de Nascimento</label><input type="text" name="data_nascimento" value="{{ cad.get('data_nascimento','') }}"></div>
+      <div class="field col-3"><label>Idade</label><input type="text" name="idade" value="{{ cad.get('idade','') }}"></div>
+
+      <div class="field col-3"><label>Estado Civil</label><input type="text" name="estado_civil" value="{{ cad.get('estado_civil','') }}"></div>
+      <div class="field col-3"><label>Profissão</label><input type="text" name="profissao" value="{{ cad.get('profissao','') }}"></div>
+      <div class="field col-3"><label>Escolaridade</label><input type="text" name="escolaridade" value="{{ cad.get('escolaridade','') }}"></div>
+      <div class="field col-3"><label>Data Início</label><input type="text" name="data_inicio" value="{{ cad.get('data_inicio','') }}"></div>
+
+      <div class="field col-4"><label>CPF</label><input type="text" name="cpf" value="{{ paciente.cpf }}"></div>
+      <div class="field col-4"><label>RG</label><input type="text" name="rg" value="{{ cad.get('rg','') }}"></div>
+      <div class="field col-4"><label>Telefone / WhatsApp</label><input type="text" name="telefone" value="{{ paciente.telefone }}"></div>
+
+      <div class="field col-6"><label>Endereço</label><input type="text" name="endereco" value="{{ cad.get('endereco','') }}"></div>
+      <div class="field col-3"><label>Cidade / UF</label><input type="text" name="cidade" value="{{ cad.get('cidade','') }}"></div>
+      <div class="field col-3"><label>CEP</label><input type="text" name="cep" value="{{ cad.get('cep','') }}"></div>
+
+      <div class="field col-4"><label>E-mail</label><input type="email" name="email" value="{{ paciente.email }}"></div>
+      <div class="field col-3"><label>Contato Emergencial</label><input type="text" name="contato_emergencial" value="{{ cad.get('contato_emergencial','') }}"></div>
+      <div class="field col-2"><label>Parentesco</label><input type="text" name="grau_parentesco" value="{{ cad.get('grau_parentesco','') }}"></div>
+      <div class="field col-3"><label>Tel. Emergência</label><input type="text" name="telefone_emergencia" value="{{ cad.get('telefone_emergencia','') }}"></div>
+
+      <div class="field col-4"><label>Como conheceu</label><input type="text" name="como_conheceu" value="{{ cad.get('como_conheceu','') }}"></div>
+      <div class="field col-4"><label>Psicanálise/Terapia Anterior?</label>
+        <select name="ja_fez_terapia">
+          <option value="nao" {% if cad.get('ja_fez_terapia')=='nao' %}selected{% endif %}>Não</option>
+          <option value="sim" {% if cad.get('ja_fez_terapia')=='sim' %}selected{% endif %}>Sim</option>
+        </select>
+      </div>
+      <div class="field col-4"><label>Detalhes terapia anterior</label><input type="text" name="detalhe_terapia" value="{{ cad.get('detalhe_terapia','') }}"></div>
+
+      <div class="field col-4"><label>Usa medicação?</label>
+        <select name="faz_uso_medicacao">
+          <option value="nao" {% if cad.get('faz_uso_medicacao')=='nao' %}selected{% endif %}>Não</option>
+          <option value="sim" {% if cad.get('faz_uso_medicacao')=='sim' %}selected{% endif %}>Sim</option>
+        </select>
+      </div>
+      <div class="field col-4"><label>Qual medicação?</label><input type="text" name="qual_medicacao" value="{{ cad.get('qual_medicacao','') }}"></div>
+      <div class="field col-4"><label>Acompanhamento médico?</label>
+        <select name="acompanhamento_medico">
+          <option value="nao" {% if cad.get('acompanhamento_medico')=='nao' %}selected{% endif %}>Não</option>
+          <option value="sim" {% if cad.get('acompanhamento_medico')=='sim' %}selected{% endif %}>Sim</option>
+        </select>
+      </div>
+      <div class="field col-12"><label>Especialidade / Médico</label><input type="text" name="detalhe_medico" value="{{ cad.get('detalhe_medico','') }}"></div>
+
+      <div class="field col-12"><label>Condições de Saúde Importantes</label><textarea name="condicoes_saude" rows="2">{{ cad.get('condicoes_saude','') }}</textarea></div>
+      <div class="field col-12"><label>Queixa Principal (Síntese)</label><textarea name="queixa_principal" rows="2">{{ cad.get('queixa_principal','') }}</textarea></div>
+
+      <div class="field col-3"><label>Frequência</label><input type="text" name="frequencia" value="{{ cad.get('frequencia','1x por semana') }}"></div>
+      <div class="field col-3"><label>Duração</label><input type="text" name="duracao" value="{{ cad.get('duracao','50 minutos') }}"></div>
+      <div class="field col-3"><label>Honorários</label><input type="text" name="honorarios" value="{{ cad.get('honorarios','') }}"></div>
+      <div class="field col-3"><label>Formato</label><input type="text" name="formato_atendimento" value="{{ cad.get('formato_atendimento','Presencial') }}"></div>
+
+      <div class="col-12">
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+          <input type="checkbox" name="termo_aceito" {% if cad.get('termo_aceito') %}checked{% endif %}> Termo de Consentimento assinado/aceito.
+        </label>
+      </div>
+    </div>
+    <div style="margin-top:14px; text-align:right;">
+      <button type="submit" class="btn btn-gold">Salvar Alterações do Cadastro</button>
+    </div>
+  </div>
+</form>
+
+{% elif aba == 'anamnese' and current_user.pode_ver_clinico %}
+<form method="POST" action="{{ url_for('paciente_anamnese', paciente_id=paciente.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card">
+    <div class="form-grid">
+      <div class="field col-3"><label>Data da Anamnese</label><input type="text" name="data_anamnese" value="{{ anamnese.data_anamnese if anamnese else hoje_str }}"></div>
+      <div class="field col-9"></div>
+      <div class="field col-12"><label>Motivo da Procura</label><textarea name="motivo_procura" rows="2">{{ anam.get('motivo_procura','') }}</textarea></div>
+      <div class="field col-12"><label>História da Queixa</label><textarea name="historia_queixa" rows="3">{{ anam.get('historia_queixa','') }}</textarea></div>
+      <div class="field col-12"><label>História Familiar</label><textarea name="historia_familiar" rows="3">{{ anam.get('historia_familiar','') }}</textarea></div>
+      <div class="field col-12"><label>Desenvolvimento Infantil</label><textarea name="desenvolvimento_infantil" rows="3">{{ anam.get('desenvolvimento_infantil','') }}</textarea></div>
+      <div class="field col-12"><label>Escolaridade</label><textarea name="escolaridade_historico" rows="2">{{ anam.get('escolaridade_historico','') }}</textarea></div>
+      <div class="field col-6"><label>Vida Pessoal</label><textarea name="vida_pessoal" rows="3">{{ anam.get('vida_pessoal','') }}</textarea></div>
+      <div class="field col-6"><label>Relacionamento Afetivo</label><textarea name="relacionamento_afetivo" rows="3">{{ anam.get('relacionamento_afetivo','') }}</textarea></div>
+      <div class="field col-6"><label>Saúde Física</label><textarea name="saude_fisica" rows="2">{{ anam.get('saude_fisica','') }}</textarea></div>
+      <div class="field col-6"><label>Uso de Medicamentos</label><textarea name="uso_medicamentos" rows="2">{{ anam.get('uso_medicamentos','') }}</textarea></div>
+      <div class="field col-12"><label>Hábitos de Vida</label><textarea name="habitos_vida" rows="2">{{ anam.get('habitos_vida','') }}</textarea></div>
+      <div class="field col-6"><label>Expectativas</label><textarea name="expectativas" rows="2">{{ anam.get('expectativas','') }}</textarea></div>
+      <div class="field col-6"><label>Observações Iniciais</label><textarea name="observacoes_iniciais" rows="2">{{ anam.get('observacoes_iniciais','') }}</textarea></div>
+    </div>
+    <div style="margin-top:14px; text-align:right;">
+      <button type="submit" class="btn btn-gold">Salvar Anamnese Clínica</button>
+    </div>
+  </div>
+</form>
+
+{% elif aba == 'sessoes' %}
+<div class="form-grid" style="margin-bottom:14px;">
+  <div class="card col-2" style="margin-bottom:0; text-align:center;"><div style="font-size:0.68rem; color:#64748b; font-weight:700;">SESSÕES</div><div style="font-size:1.3rem; font-weight:700;">{{ resumo.total }}</div></div>
+  <div class="card col-2" style="margin-bottom:0; text-align:center;"><div style="font-size:0.68rem; color:#64748b; font-weight:700;">COMPARECEU</div><div style="font-size:1.3rem; font-weight:700; color:#065f46;">{{ resumo.sim }}</div></div>
+  <div class="card col-2" style="margin-bottom:0; text-align:center;"><div style="font-size:0.68rem; color:#64748b; font-weight:700;">FALTAS</div><div style="font-size:1.3rem; font-weight:700; color:#991b1b;">{{ resumo.nao }}</div></div>
+  <div class="card col-3" style="margin-bottom:0; text-align:center;"><div style="font-size:0.68rem; color:#64748b; font-weight:700;">PAGOS</div><div style="font-size:1.2rem; font-weight:700; color:#065f46;">{{ resumo.pago }} (R$ {{ "%.2f"|format(resumo.total_pago_rs) }})</div></div>
+  <div class="card col-3" style="margin-bottom:0; text-align:center;"><div style="font-size:0.68rem; color:#64748b; font-weight:700;">PENDENTES</div><div style="font-size:1.2rem; font-weight:700; color:#92400e;">{{ resumo.pendente }} (R$ {{ "%.2f"|format(resumo.total_pendente_rs) }})</div></div>
+</div>
+
+<div class="card">
+  <h3 style="font-family:'Cinzel',serif; font-size:0.9rem; margin-bottom:10px;">Lançar Nova Sessão</h3>
+  <form method="POST" action="{{ url_for('paciente_nova_sessao', paciente_id=paciente.id) }}" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field col-2"><label>Data</label><input type="date" name="data_sessao" required></div>
+    <div class="field col-2"><label>Horário</label><input type="time" name="horario" value="14:00" required></div>
+    <div class="field col-2"><label>Compareceu</label>
+      <select name="compareceu"><option value="Sim">Sim</option><option value="Não">Não</option><option value="">Agendado</option></select>
+    </div>
+    <div class="field col-2"><label>Pagamento</label>
+      <select name="pagamento"><option value="Pago">Pago</option><option value="Pendente">Pendente</option></select>
+    </div>
+    <div class="field col-2"><label>Valor (R$)</label><input type="text" name="valor" placeholder="250.00"></div>
+    <div class="field col-2"><label>Modalidade</label>
+      <select name="modalidade"><option>Presencial</option><option>Online</option></select>
+    </div>
+    <div class="field col-10"><label>Observação</label><input type="text" name="observacao" placeholder="Anotação da sessão..."></div>
+    <div class="col-2" style="display:flex; align-items:flex-end;"><button type="submit" class="btn btn-gold" style="width:100%; justify-content:center;">+ Lançar</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="font-family:'Cinzel',serif; font-size:0.9rem; margin-bottom:10px;">Histórico de Sessões</h3>
+  {% if sessoes %}
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead>
+      <tr><th>#</th><th>Data</th><th>Horário</th><th>Compareceu</th><th>Pagamento</th><th>Valor</th><th>Observação</th><th>Atualizar</th></tr>
+    </thead>
+    <tbody>
+      {% for s in sessoes %}
+      <tr>
+        <form method="POST" action="{{ url_for('paciente_atualizar_sessao', paciente_id=paciente.id, sessao_id=s.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <td><strong>{{ "%02d"|format(loop.index) }}</strong></td>
+          <td>{{ s.inicio.strftime('%d/%m/%Y') }}</td>
+          <td>{{ s.inicio.strftime('%H:%M') }}</td>
+          <td>
+            <select name="compareceu" style="padding:4px; border-radius:4px; border:1px solid #cbd5e1;">
+              <option value="" {% if not s.compareceu %}selected{% endif %}>—</option>
+              <option value="Sim" {% if s.compareceu=='Sim' %}selected{% endif %}>Sim</option>
+              <option value="Não" {% if s.compareceu=='Não' %}selected{% endif %}>Não</option>
+            </select>
+          </td>
+          <td>
+            <select name="pagamento" style="padding:4px; border-radius:4px; border:1px solid #cbd5e1;">
+              <option value="Pago" {% if s.pagamento=='Pago' %}selected{% endif %}>Pago</option>
+              <option value="Pendente" {% if s.pagamento=='Pendente' %}selected{% endif %}>Pendente</option>
+            </select>
+          </td>
+          <td>R$ {{ "%.2f"|format(s.valor or 0) }}</td>
+          <td><input type="text" name="observacao" value="{{ s.observacao }}" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px;"></td>
+          <td><button type="submit" class="btn btn-dark" style="padding:4px 10px; font-size:0.75rem;">Salvar</button></td>
+        </form>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="color:#64748b; font-size:0.86rem;">Nenhuma sessão lançada para este paciente ainda.</p>
+  {% endif %}
+</div>
+
+{% elif aba == 'formularios' %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h3 style="font-family:'Cinzel',serif; font-size:0.95rem;">Formulários Enviados & Respostas</h3>
+    <a href="{{ url_for('formularios') }}" class="btn btn-gold" style="padding:6px 12px; font-size:0.8rem;">+ Enviar Novo Formulário</a>
+  </div>
+  {% if envios %}
+    {% for e in envios %}
+    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px; background:#f8fafc;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <strong>{{ e.formulario.titulo if e.formulario else 'Formulário' }}</strong>
+          <span style="font-size:0.76rem; color:#64748b; margin-left:8px;">Enviado em {{ e.criado_em.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
+        {% if e.status == 'Respondido' %}
+          <span class="badge badge-ok">Respondido em {{ e.respondido_em.strftime('%d/%m/%Y %H:%M') if e.respondido_em else '' }}</span>
+        {% else %}
+          <span class="badge badge-warn">Aguardando resposta • Link: {{ base_url }}/responder/{{ e.token }}</span>
+        {% endif %}
+      </div>
+      {% if e.status == 'Respondido' %}
+        {% if e.formulario and e.formulario.sigiloso and not current_user.pode_ver_clinico %}
+        <div style="margin-top:8px; font-size:0.82rem; color:#64748b;">🔒 Respostas sigilosas (acesso exclusivo do Psicanalista).</div>
+        {% else %}
+        <div style="margin-top:10px; display:grid; gap:6px;">
+          {% for pergunta, resp in e.respostas.items() %}
+          <div style="background:#fff; padding:7px 10px; border:1px solid #e2e8f0; border-radius:5px;">
+            <div style="font-size:0.7rem; font-weight:700; color:#475569; text-transform:uppercase;">{{ pergunta }}</div>
+            <div style="font-size:0.84rem; color:#0f172a; margin-top:2px;">{{ resp or '—' }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:#64748b; font-size:0.86rem;">Nenhum formulário enviado para este paciente ainda.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
