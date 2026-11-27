@@ -305,7 +305,7 @@
   }
 
   function copiarTexto(txt) {
-    navigator.clipboard.writeText(txt).then(() => alert('Link copiado para a área de transferência!'));
+    navigator.clipboard.writeText(txt).then(() => showToast('Link copiado para a área de transferência!', 'success'));
   }
 
   function verRespostas(paciente, formTitulo, respostas) {

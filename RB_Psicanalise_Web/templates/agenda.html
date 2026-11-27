@@ -181,11 +181,13 @@
 
   async function remarcarEvento(ev) {
     const fim = ev.end ? ev.end : new Date(ev.start.getTime() + 50 * 60000);
-    await fetch(`/api/agendamentos/${ev.id}/atualizar`, {
+    const r = await fetch(`/api/agendamentos/${ev.id}/atualizar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({ inicio: toLocalInput(ev.start), fim: toLocalInput(fim) })
     });
+    if (r.ok) showToast('Horário remarcado com sucesso.', 'success');
+    else showToast('Não foi possível remarcar.', 'danger');
     calendar.refetchEvents();
   }
 
@@ -237,21 +239,23 @@
     });
     if (!r.ok) {
       const d = await r.json();
-      return alert(d.erro || 'Erro ao salvar.');
+      return showToast(d.erro || 'Erro ao salvar agendamento.', 'danger');
     }
     fecharModalAg();
     calendar.refetchEvents();
+    showToast(id ? 'Agendamento atualizado!' : 'Sessão agendada com sucesso!', 'success');
   }
 
   async function excluirAgendamento() {
     const id = document.getElementById('agId').value;
     if (!id || !confirm('Deseja excluir este agendamento?')) return;
-    await fetch(`/api/agendamentos/${id}/excluir`, {
+    const r = await fetch(`/api/agendamentos/${id}/excluir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
     });
     fecharModalAg();
     calendar.refetchEvents();
+    if (r.ok) showToast('Agendamento excluído.', 'info');
   }
 </script>
 {% endblock %}

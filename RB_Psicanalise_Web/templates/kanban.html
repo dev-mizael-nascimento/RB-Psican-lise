@@ -235,11 +235,13 @@
         const colunaId = evt.to.dataset.colId;
         const pacienteId = evt.item.dataset.pacienteId;
         const ordemIds = Array.from(evt.to.querySelectorAll('.k-card')).map(c => c.dataset.pacienteId);
-        await fetch('/api/kanban/mover', {
+        const r = await fetch('/api/kanban/mover', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
           body: JSON.stringify({ paciente_id: pacienteId, coluna_id: colunaId, ordem_ids: ordemIds })
         });
+        if (r.ok) showToast('Paciente movido no Kanban.', 'success');
+        else showToast('Erro ao mover card.', 'danger');
       }
     });
   });
