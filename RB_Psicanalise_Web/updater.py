@@ -102,20 +102,32 @@ def aplicar_atualizacao_exe(exe_url: str, db_uri: str, data_dir: str) -> tuple[b
     with urllib.request.urlopen(req, timeout=60) as resp, open(novo_exe, "wb") as out:
         shutil.copyfileobj(resp, out)
 
+    pid = os.getpid()
     bat_content = f"""@echo off
+set "_MEIPASS2="
+set "_PYI_ARCHIVE_FILE="
+set "PYTHONHOME="
+set "PYTHONPATH="
 timeout /t 2 /nobreak >nul
+taskkill /F /PID {pid} >nul 2>&1
+timeout /t 1 /nobreak >nul
 if exist "{bak_exe}" del /f /q "{bak_exe}"
 move /y "{atual_exe}" "{bak_exe}" >nul
 move /y "{novo_exe}" "{atual_exe}" >nul
-start "" "{atual_exe}"
+explorer.exe "{atual_exe}"
 del "%~f0"
 """
     with open(bat_path, "w", encoding="utf-8") as f:
         f.write(bat_content)
 
+    clean_env = os.environ.copy()
+    for k in ("_MEIPASS2", "_PYI_ARCHIVE_FILE", "PYTHONHOME", "PYTHONPATH"):
+        clean_env.pop(k, None)
+
     subprocess.Popen(
         ["cmd", "/c", bat_path],
-        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+        env=clean_env,
+        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW,
         close_fds=True,
     )
     return True, "Atualização baixada! O aplicativo será reiniciado na nova versão em instantes."
