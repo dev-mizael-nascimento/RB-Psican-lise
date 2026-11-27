@@ -1,36 +1,186 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — RB Psicanálise{% endblock %}
+{% block head_extra %}
+<style>
+  :root {
+    --cx-card: #ffffff;
+    --cx-line: #e2e8f0;
+    --cx-line-2: #cbd5e1;
+    --cx-mono: 'Plus Jakarta Sans', monospace;
+    --font-display: 'Cinzel', serif;
+    --font-text: 'Plus Jakarta Sans', sans-serif;
+    --t-body: 0.95rem;
+    --t-label: 0.74rem;
+    --r-sm: 6px;
+    --s-3: 10px;
+    --s-5: 16px;
+    --s-6: 22px;
+    --cx-ease: cubic-bezier(.2,.8,.2,1);
+    --cx-shadow: 0 6px 20px rgba(15,23,42,0.12);
+    --accent: #846122;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --bg: #ffffff;
+  }
+  .cx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* fx-chart */
+  .cx-chart { display: grid; gap: var(--s-5); min-width: 0; }
+  .cx-chart__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-5); flex-wrap: wrap; }
+  .cx-chart__title { font: 700 var(--t-body)/1.3 var(--font-display); margin: 0; color: var(--ink); letter-spacing: 0.03em; }
+  .cx-chart__sub { font-size: var(--t-label); color: var(--muted); margin: 4px 0 0; }
+  .cx-chart__total { display: grid; justify-items: end; gap: 2px; }
+  .cx-chart__label { font-size: var(--t-label); color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .cx-chart__value { font: 700 1.8rem/1 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+  .cx-chart__delta { font-size: var(--t-label); color: #846122; font-weight: 600; }
+  .cx-chart__plot { position: relative; height: 210px; outline-offset: 6px; cursor: crosshair; }
+  .cx-chart__grid { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .cx-chart__grid span { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--cx-line-2); }
+  .cx-chart__grid span:last-child { border-top-style: solid; }
+  .cx-chart__grid span::after {
+    content: attr(data-v); position: absolute; left: 0; bottom: 5px; font: 600 11px/1 var(--cx-mono); color: var(--muted);
+  }
+  .cx-chart__grid span:last-child::after { display: none; }
+  .cx-chart__area {
+    position: absolute; inset: 0; z-index: 0;
+    background: linear-gradient(to bottom, rgba(132, 97, 34, 0.24), rgba(132, 97, 34, 0.02));
+  }
+  .cx-chart__line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 2; }
+  .cx-chart__line path { fill: none; stroke: var(--accent); stroke-width: 2.2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+  .cx-chart__cursor {
+    position: absolute; top: 0; bottom: 0; width: 1px; z-index: 3; background: var(--cx-line-2);
+    opacity: 0; transition: opacity .15s var(--cx-ease); pointer-events: none;
+  }
+  .cx-chart__dot {
+    position: absolute; left: -5px; width: 11px; height: 11px; border-radius: 99px; background: var(--accent);
+    border: 2px solid var(--cx-card); box-shadow: 0 0 0 1px var(--accent);
+  }
+  .cx-chart__tip {
+    position: absolute; top: 0; z-index: 4; transform: translateX(14px); white-space: nowrap;
+    height: 30px; display: inline-flex; align-items: center; padding: 0 10px;
+    border-radius: var(--r-sm); background: #0f172a; box-shadow: var(--cx-shadow);
+    font-size: 12px; color: #fff; opacity: 0; transition: opacity .15s var(--cx-ease); pointer-events: none;
+  }
+  .cx-chart__tip.is-left { transform: translateX(calc(-100% - 14px)); }
+  .cx-chart__tip b { font-weight: 700; color: #fde047; }
+  .cx-chart__tip span { color: #cbd5e1; margin-right: 8px; }
+  .cx-chart.is-reading .cx-chart__cursor, .cx-chart.is-reading .cx-chart__tip { opacity: 1; }
+  .cx-chart__axis { display: flex; justify-content: space-between; font: 600 11px/1 var(--cx-mono); color: var(--muted); }
+
+  /* fx-bars */
+  .cx-bars { display: grid; gap: var(--s-5); min-width: 0; }
+  .cx-bars__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-5); flex-wrap: wrap; }
+  .cx-bars__title { font: 700 var(--t-body)/1.3 var(--font-display); margin: 0; color: var(--ink); letter-spacing: 0.03em; }
+  .cx-bars__sub { font-size: var(--t-label); color: var(--muted); margin: 4px 0 0; }
+  .cx-bars__total { display: grid; justify-items: end; gap: 2px; }
+  .cx-bars__label { font-size: var(--t-label); color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .cx-bars__value { font: 700 1.8rem/1 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+  .cx-bars__delta { font-size: var(--t-label); color: #065f46; font-weight: 600; }
+  .cx-bars__chart { --scale-w: 48px; display: grid; grid-template-columns: var(--scale-w) minmax(0, 1fr); row-gap: var(--s-3); }
+  .cx-bars__scale { position: relative; grid-row: 1; grid-column: 1 / -1; pointer-events: none; }
+  .cx-bars__scale span { position: absolute; left: var(--scale-w); right: 0; height: 0; border-top: 1px dashed var(--cx-line); }
+  .cx-bars__scale span.is-base { border-top: 1px solid var(--cx-line-2); }
+  .cx-bars__scale span::before {
+    content: attr(data-v); position: absolute; right: calc(100% + 8px); top: 0; transform: translateY(-50%);
+    font: 600 11px/1 var(--cx-mono); color: var(--muted); white-space: nowrap;
+  }
+  .cx-bars__plot { position: relative; isolation: isolate; grid-row: 1; grid-column: 2; height: 210px; }
+  .cx-bars__cols { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: clamp(6px, 2%, 14px); }
+  .cx-bars__col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; }
+  .cx-bars__bar {
+    position: relative; width: 100%; height: var(--h); min-height: 4px; border-radius: var(--r-sm) var(--r-sm) 0 0;
+    background: linear-gradient(180deg, #b0893f 0%, #846122 100%);
+    transition: opacity 0.15s ease;
+  }
+  .cx-bars__col:last-child .cx-bars__bar { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #846122; }
+  .cx-bars__col:hover .cx-bars__bar { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #0f172a; }
+  .cx-bars__tag {
+    position: absolute; left: 50%; bottom: calc(var(--h) + 8px); transform: translateX(-50%); z-index: 3;
+    font: 700 11px/1 var(--cx-mono); color: #fff; white-space: nowrap; opacity: 0; transition: opacity .15s var(--cx-ease);
+    padding: 4px 7px; border-radius: var(--r-sm); background: #0f172a; pointer-events: none;
+  }
+  .cx-bars__col:hover .cx-bars__tag { opacity: 1; }
+  .cx-bars__axis { grid-row: 2; grid-column: 2; display: flex; gap: clamp(6px, 2%, 14px); font: 600 11px/1 var(--cx-mono); color: var(--muted); }
+  .cx-bars__axis span { flex: 1; text-align: center; }
+
+  @media (max-width: 639px) {
+    .cx-chart__total, .cx-bars__total { justify-items: start; }
+    .cx-chart__plot, .cx-bars__plot { height: 175px; }
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <h1>Dashboard Clínico</h1>
     <p>Visão geral da clínica RB Psicanálise</p>
   </div>
-  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente</a>
+  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">{{ icon('ui-user-plus', 16) }} Novo Paciente</a>
 </div>
 
 <div class="form-grid" style="margin-bottom: 20px;">
   <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #846122;">
-    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Pacientes Ativos</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_pacientes }}
-    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Pacientes Ativos</span>{{ icon('ui-users-round', 16) }}</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_pacientes }}</div>
   </div>
   <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #1e293b;">
-    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Sessões Registradas</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_sessoes }}
-    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Sessões Registradas</span>{{ icon('ui-calendar-days', 16) }}</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_sessoes }}</div>
   </div>
   <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #d97706;">
-    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Pagamentos Pendentes</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; margin-top:4px; color:#92400e;">{{
-      qtd_pendentes }} (R$ {{ "%.2f"|format(valor_pendente) }})</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Pagamentos Pendentes</span>{{ icon('ui-clock', 16) }}</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; margin-top:4px; color:#92400e;">{{ qtd_pendentes }} (R$ {{ "%.2f"|format(valor_pendente) }})</div>
   </div>
   <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #10b981;">
-    <div style="font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;">Recebido / Form. Resp.
-    </div>
-    <div style="font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; margin-top:4px; color:#065f46;">R$ {{
-      "%.2f"|format(valor_recebido) }} • {{ form_respondidos }} resp.</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Recebido / Form. Resp.</span>{{ icon('ui-credit-card', 16) }}</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; margin-top:4px; color:#065f46;">R$ {{ "%.2f"|format(valor_recebido) }} • {{ form_respondidos }} resp.</div>
   </div>
+</div>
+
+<!-- Gráficos Profissionais (fx-chart & fx-bars com dados reais do SQLite) -->
+<div class="form-grid" style="margin-bottom: 18px;">
+  <article class="card col-6 cx-chart" id="rbFxChart" style="margin-bottom:0;">
+    <header class="cx-chart__head">
+      <div>
+        <h3 class="cx-chart__title">Ritmo de Atendimentos</h3>
+        <p class="cx-chart__sub">Últimos 14 dias (passe o mouse ou use as setas)</p>
+      </div>
+      <div class="cx-chart__total">
+        <span class="cx-chart__label">Total no Período</span>
+        <span class="cx-chart__value">{{ chart_total }}</span>
+        <span class="cx-chart__delta">sessões agendadas/realizadas</span>
+      </div>
+    </header>
+    <div class="cx-chart__plot" tabindex="0" role="img" aria-label="Gráfico de atendimentos dos últimos 14 dias">
+      <div class="cx-chart__grid" aria-hidden="true"></div>
+      <div class="cx-chart__area" aria-hidden="true"></div>
+      <svg class="cx-chart__line" aria-hidden="true" preserveAspectRatio="none"><path/></svg>
+      <div class="cx-chart__cursor" aria-hidden="true"><span class="cx-chart__dot"></span></div>
+      <div class="cx-chart__tip" aria-live="polite"></div>
+    </div>
+    <div class="cx-chart__axis" aria-hidden="true"></div>
+  </article>
+
+  <article class="card col-6 cx-bars" id="rbFxBars" style="margin-bottom:0;">
+    <header class="cx-bars__head">
+      <div>
+        <h3 class="cx-bars__title">Receita Mensal (Pago)</h3>
+        <p class="cx-bars__sub">Últimos 6 meses em honorários confirmados</p>
+      </div>
+      <div class="cx-bars__total">
+        <span class="cx-bars__label">Mês Atual</span>
+        <span class="cx-bars__value">R$ {{ "%.0f"|format(bars_atual) }}</span>
+        <span class="cx-bars__delta">Destaque no mês vigente</span>
+      </div>
+    </header>
+    <div class="cx-bars__chart">
+      <div class="cx-bars__scale" aria-hidden="true"></div>
+      <div class="cx-bars__plot">
+        <div class="cx-bars__cols"></div>
+      </div>
+      <div class="cx-bars__axis" aria-hidden="true"></div>
+    </div>
+  </article>
 </div>
 
 <div class="card">
@@ -39,7 +189,7 @@
     <form method="GET" action="{{ url_for('pacientes_lista') }}" style="display:flex; gap:8px; flex-wrap:wrap; width:100%; max-width:380px;">
       <input type="text" name="q" placeholder="Buscar por nome, CPF ou prontuário..."
         style="flex:1; min-width:180px; padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px;">
-      <button type="submit" class="btn btn-dark">Buscar</button>
+      <button type="submit" class="btn btn-dark">{{ icon('ui-search', 15) }} Buscar</button>
     </form>
   </div>
   {% if ultimos_pacientes %}
@@ -61,16 +211,103 @@
         <td>{{ p.nome_completo }}</td>
         <td>{{ p.telefone or '—' }}</td>
         <td><span class="badge badge-slate">{{ p.kanban_coluna.titulo if p.kanban_coluna else '—' }}</span></td>
-        <td><a href="{{ url_for('paciente_detalhe', paciente_id=p.id) }}" class="btn btn-outline"
-            style="padding:5px 10px; font-size:0.78rem;">Abrir Prontuário</a></td>
+        <td><a href="{{ url_for('paciente_detalhe', paciente_id=p.id) }}" class="btn btn-outline" style="padding:5px 10px; font-size:0.78rem;">Abrir Prontuário</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
   {% else %}
-  <p style="color:#64748b; font-size:0.88rem;">Nenhum paciente cadastrado ainda. Clique em <strong>+ Novo
-      Paciente</strong> para começar.</p>
+  <p style="color:#64748b; font-size:0.88rem;">Nenhum paciente cadastrado ainda. Clique em <strong>Novo Paciente</strong> para começar.</p>
   {% endif %}
 </div>
+
+<script>
+  // Inicializa fx-chart (Atendimentos 14 dias)
+  (function initFxChart() {
+    const root = document.getElementById('rbFxChart');
+    if (!root) return;
+    const labels = {{ chart_labels|tojson }};
+    const data = {{ chart_values|tojson }};
+    const maxVal = {{ chart_max|tojson }};
+    const plot = root.querySelector('.cx-chart__plot');
+    const area = root.querySelector('.cx-chart__area');
+    const line = root.querySelector('.cx-chart__line');
+    const path = line.querySelector('path');
+    const cursor = root.querySelector('.cx-chart__cursor');
+    const dot = root.querySelector('.cx-chart__dot');
+    const tip = root.querySelector('.cx-chart__tip');
+    const grid = root.querySelector('.cx-chart__grid');
+    const axis = root.querySelector('.cx-chart__axis');
+
+    const meio = Math.round(maxVal / 2);
+    grid.innerHTML = [[maxVal, String(maxVal)], [meio, String(meio)], [0, '0']]
+      .map(([v, l]) => `<span data-v="${l}" style="top:${(1 - v / maxVal) * 100}%"></span>`).join('');
+    axis.innerHTML = [0, 4, 9, 13].map(i => `<span>${labels[i] || ''}</span>`).join('');
+
+    const pts = data.map((v, i) => [i / (data.length - 1) * 1000, (1 - v / maxVal) * 1000]);
+    const d = pts.map((p, i) => {
+      if (!i) return `M${p[0]},${p[1]}`;
+      const a = pts[i - 1], dx = (p[0] - a[0]) / 2.6;
+      return `C${a[0] + dx},${a[1]} ${p[0] - dx},${p[1]} ${p[0]},${p[1]}`;
+    }).join(' ');
+    line.setAttribute('viewBox', '0 0 1000 1000');
+    path.setAttribute('d', d);
+
+    const areaPath = `${d} L1000,1000 L0,1000 Z`;
+    const svgMask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" preserveAspectRatio="none"><path d="${areaPath}"/></svg>`)}")`;
+    area.style.maskImage = svgMask;
+    area.style.webkitMaskImage = svgMask;
+    area.style.maskSize = '100% 100%';
+    area.style.webkitMaskSize = '100% 100%';
+    area.style.maskRepeat = 'no-repeat';
+    area.style.webkitMaskRepeat = 'no-repeat';
+
+    let at = -1;
+    const show = i => {
+      at = Math.max(0, Math.min(data.length - 1, i));
+      const x = at / (data.length - 1) * 100, y = (1 - data[at] / maxVal) * 100;
+      cursor.style.left = `${x}%`;
+      dot.style.top = `calc(${y}% - 5.5px)`;
+      tip.style.left = `${x}%`;
+      tip.style.top = `clamp(0px, calc(${y}% - 15px), calc(100% - 30px))`;
+      tip.classList.toggle('is-left', x > 55);
+      tip.innerHTML = `<span>${labels[at]}</span><b>${data[at]} sessões</b>`;
+      root.classList.add('is-reading');
+    };
+    const hide = () => root.classList.remove('is-reading');
+    plot.addEventListener('pointermove', e => {
+      const r = plot.getBoundingClientRect();
+      show(Math.round((e.clientX - r.left) / r.width * (data.length - 1)));
+    });
+    plot.addEventListener('pointerleave', hide);
+    plot.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); show((at < 0 ? data.length - 1 : at) + (e.key === 'ArrowRight' ? 1 : -1)); }
+      if (e.key === 'Escape') hide();
+    });
+  })();
+
+  // Inicializa fx-bars (Receita 6 meses)
+  (function initFxBars() {
+    const root = document.getElementById('rbFxBars');
+    if (!root) return;
+    const labels = {{ bars_labels|tojson }};
+    const data = {{ bars_values|tojson }};
+    const maxVal = {{ bars_max|tojson }};
+    const cols = root.querySelector('.cx-bars__cols');
+    const scale = root.querySelector('.cx-bars__scale');
+    const axis = root.querySelector('.cx-bars__axis');
+
+    const meio = Math.round(maxVal / 2);
+    const fmtK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${Math.round(v)}`;
+    scale.innerHTML = [[maxVal, fmtK(maxVal)], [meio, fmtK(meio)], [0, 'R$ 0']]
+      .map(([v, l]) => `<span class="${v ? '' : 'is-base'}" data-v="${l}" style="top:${(1 - v / maxVal) * 100}%"></span>`).join('');
+
+    cols.innerHTML = data.map(v => {
+      const h = Math.max(2, (v / maxVal * 100)).toFixed(1);
+      return `<div class="cx-bars__col" style="--h:${h}%"><span class="cx-bars__tag">R$ ${v.toFixed(2)}</span><div class="cx-bars__bar"></div></div>`;
+    }).join('');
+    axis.innerHTML = labels.map(m => `<span>${m}</span>`).join('');
+  })();
+</script>
 {% endblock %}

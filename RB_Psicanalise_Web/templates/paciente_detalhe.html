@@ -23,11 +23,12 @@
     <p>Prontuário Nº <strong>{{ paciente.prontuario }}</strong> • Tel: {{ paciente.telefone or '—' }} • E-mail: {{ paciente.email or '—' }}</p>
   </div>
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='cadastro') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Cadastro A4</a>
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='cadastro') }}" target="_blank" class="btn btn-outline">{{ icon('ui-printer', 15) }} Imprimir Cadastro A4</a>
     {% if current_user.pode_ver_clinico %}
-    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='anamnese') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Anamnese A4</a>
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='anamnese') }}" target="_blank" class="btn btn-outline">{{ icon('ui-printer', 15) }} Imprimir Anamnese A4</a>
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='acompanhamento') }}" target="_blank" class="btn btn-outline">{{ icon('ui-printer', 15) }} Imprimir Acompanhamento A4</a>
     {% endif %}
-    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='sessoes') }}" target="_blank" class="btn btn-outline">🖨️ Imprimir Sessões A4</a>
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='sessoes') }}" target="_blank" class="btn btn-outline">{{ icon('ui-printer', 15) }} Imprimir Sessões A4</a>
   </div>
 </div>
 
@@ -38,6 +39,9 @@
   {% endif %}
   <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='sessoes') }}" class="tab-link {% if aba == 'sessoes' %}active{% endif %}">03. Controle de Sessões ({{ resumo.total }})</a>
   <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='formularios') }}" class="tab-link {% if aba == 'formularios' %}active{% endif %}">04. Formulários ({{ envios|length }})</a>
+  {% if current_user.pode_ver_clinico %}
+  <a href="{{ url_for('paciente_detalhe', paciente_id=paciente.id, aba='acompanhamento') }}" class="tab-link {% if aba == 'acompanhamento' %}active{% endif %}">05. Acompanhamento Clínico ({{ evolucoes|length }})</a>
+  {% endif %}
 </div>
 
 {% if aba == 'cadastro' %}
@@ -232,7 +236,7 @@
       </div>
       {% if e.status == 'Respondido' %}
         {% if e.formulario and e.formulario.sigiloso and not current_user.pode_ver_clinico %}
-        <div style="margin-top:8px; font-size:0.82rem; color:#64748b;">🔒 Respostas sigilosas (acesso exclusivo do Psicanalista).</div>
+        <div style="margin-top:8px; font-size:0.82rem; color:#64748b; display:flex; align-items:center; gap:5px;">{{ icon('ui-lock-keyhole', 14) }} Respostas sigilosas (acesso exclusivo do Psicanalista).</div>
         {% else %}
         <div style="margin-top:10px; display:grid; gap:6px;">
           {% for pergunta, resp in e.respostas.items() %}
@@ -248,6 +252,54 @@
     {% endfor %}
   {% else %}
     <p style="color:#64748b; font-size:0.86rem;">Nenhum formulário enviado para este paciente ainda.</p>
+  {% endif %}
+</div>
+
+{% elif aba == 'acompanhamento' and current_user.pode_ver_clinico %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+    <div>
+      <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; display:flex; align-items:center; gap:6px;">{{ icon('ui-notebook-pen', 16) }} Registrar Evolução da Sessão</h3>
+      <p style="font-size:0.78rem; color:#64748b;">Anotações sigilosas exclusivas do Psicanalista • Tudo fica reunido abaixo em ordem contínua</p>
+    </div>
+    <a href="{{ url_for('imprimir_ficha', paciente_id=paciente.id, tipo='acompanhamento') }}" target="_blank" class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem;">{{ icon('ui-printer', 15) }} Imprimir Ficha Completa A4</a>
+  </div>
+
+  <form method="POST" action="{{ url_for('paciente_nova_evolucao', paciente_id=paciente.id) }}" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field col-2"><label>Sessão Nº</label><input type="number" name="numero_sessao" value="{{ proximo_num_evolucao }}" min="1" required></div>
+    <div class="field col-3"><label>Data da Sessão</label><input type="text" name="data_sessao" value="{{ hoje_str }}" required></div>
+    <div class="field col-7"><label>Tema Central / Significantes / Demanda</label><input type="text" name="tema_central" placeholder="Ex: Luto familiar, conflito no trabalho, sonhos..."></div>
+    <div class="field col-12"><label>Anotações Clínicas da Sessão *</label><textarea name="anotacoes_clinicas" rows="4" required placeholder="Livre associação, afetos observados, transferência, repetições, atos falhos..."></textarea></div>
+    <div class="field col-12"><label>Intervenções / Hipóteses & Pontos para Próximas Sessões</label><textarea name="intervencoes" rows="2" placeholder="Pontuações realizadas, manejo do setting e observações de continuidade..."></textarea></div>
+    <div class="col-12" style="text-align:right;">
+      <button type="submit" class="btn btn-gold">{{ icon('ui-plus', 15) }} Registrar Sessão na Ficha</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="font-family:'Cinzel',serif; font-size:0.95rem; margin-bottom:14px;">Linha do Tempo Unificada — Ficha de Acompanhamento Clínico</h3>
+  {% if evolucoes %}
+    {% for ev in evolucoes %}
+    <form method="POST" action="{{ url_for('paciente_editar_evolucao', paciente_id=paciente.id, ev_id=ev.id) }}" style="border:1px solid #cbd5e1; border-left:4px solid #846122; border-radius:8px; padding:14px; margin-bottom:14px; background:#fafaf9;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
+        <div style="font-family:'Cinzel',serif; font-weight:700; font-size:0.9rem; color:#0f172a;">
+          Sessão {{ "%02d"|format(ev.numero_sessao) }}
+          <span style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:500; font-size:0.78rem; color:#64748b; margin-left:8px;">Data: <input type="text" name="data_sessao" value="{{ ev.data_sessao }}" style="width:95px; padding:2px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.78rem;"></span>
+        </div>
+        <button type="submit" class="btn btn-dark" style="padding:4px 12px; font-size:0.76rem;">Salvar Alterações</button>
+      </div>
+      <div class="form-grid">
+        <div class="field col-12"><label>Tema Central / Significantes</label><input type="text" name="tema_central" value="{{ ev.tema_central }}"></div>
+        <div class="field col-12"><label>Anotações Clínicas</label><textarea name="anotacoes_clinicas" rows="3">{{ ev.anotacoes_clinicas }}</textarea></div>
+        <div class="field col-12"><label>Intervenções / Continuidade</label><textarea name="intervencoes" rows="2">{{ ev.intervencoes }}</textarea></div>
+      </div>
+    </form>
+    {% endfor %}
+  {% else %}
+    <p style="color:#64748b; font-size:0.86rem;">Nenhuma evolução clínica registrada para este paciente ainda.</p>
   {% endif %}
 </div>
 {% endif %}

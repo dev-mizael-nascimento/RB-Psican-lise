@@ -98,14 +98,19 @@
   .k-add-btn:hover { background: #fff; border-color: #846122; color: #846122; }
 
   .modal-backdrop {
-    display: none; position: fixed; inset: 0; background: rgba(9,13,22,0.6);
+    display: flex; position: fixed; inset: 0; background: rgba(9,13,22,0.58);
+    backdrop-filter: blur(2px);
     z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+    opacity: 0; pointer-events: none; transition: opacity 0.22s ease;
   }
-  .modal-backdrop.open { display: flex; }
+  .modal-backdrop.open { opacity: 1; pointer-events: auto; }
   .modal-box {
     background: #fff; border-radius: 10px; width: 100%; max-width: 420px;
     padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border-top: 4px solid #846122;
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   }
+  .modal-backdrop.open .modal-box { transform: translateY(0) scale(1); }
   .modal-box h3 { font-family: 'Cinzel', serif; font-size: 1rem; margin-bottom: 14px; }
 </style>
 {% endblock %}
@@ -116,8 +121,8 @@
     <p>Arraste os pacientes entre colunas para atualizar a fase do atendimento</p>
   </div>
   <div style="display:flex; gap:8px;">
-    <button class="btn btn-outline" onclick="abrirModalColuna()">+ Nova Coluna</button>
-    <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente Completo</a>
+    <button class="btn btn-outline" onclick="abrirModalColuna()">{{ icon('ui-plus', 15) }} Nova Coluna</button>
+    <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">{{ icon('ui-user-plus', 15) }} Novo Paciente Completo</a>
   </div>
 </div>
 
@@ -131,8 +136,8 @@
         <span class="col-count" id="count-{{ col.id }}">{{ cards|length }}</span>
       </div>
       <div class="col-actions">
-        <button title="Editar Coluna" onclick="editarColuna({{ col.id }}, '{{ col.titulo|e }}', '{{ col.cor }}')">✏️</button>
-        <button title="Excluir Coluna" onclick="excluirColuna({{ col.id }}, '{{ col.titulo|e }}')">🗑️</button>
+        <button title="Editar Coluna" onclick="editarColuna({{ col.id }}, '{{ col.titulo|e }}', '{{ col.cor }}')">{{ icon('ui-pencil', 14) }}</button>
+        <button title="Excluir Coluna" onclick="excluirColuna({{ col.id }}, '{{ col.titulo|e }}')">{{ icon('ui-trash-2', 14) }}</button>
       </div>
     </div>
 
@@ -146,14 +151,14 @@
         </div>
         <div class="k-card-meta">
           {% if p.telefone %}
-          <div>📞 {{ p.telefone }}
+          <div style="display:flex; align-items:center; gap:5px;">{{ icon('ui-phone', 13) }} {{ p.telefone }}
             {% if item.tel_limpo %}
-            <a href="https://wa.me/55{{ item.tel_limpo }}" target="_blank" style="color:#059669; font-weight:700; text-decoration:none; margin-left:4px;">WhatsApp ↗</a>
+            <a href="https://wa.me/55{{ item.tel_limpo }}" target="_blank" style="color:#059669; font-weight:700; text-decoration:none; margin-left:4px; display:inline-flex; align-items:center; gap:3px;">{{ icon('whatsapp', 13) }} WhatsApp</a>
             {% endif %}
           </div>
           {% endif %}
           {% if item.proximo %}
-          <div>📅 Próx: <strong>{{ item.proximo.inicio.strftime('%d/%m %H:%M') }}</strong></div>
+          <div style="display:flex; align-items:center; gap:5px;">{{ icon('ui-calendar-days', 13) }} Próx: <strong>{{ item.proximo.inicio.strftime('%d/%m %H:%M') }}</strong></div>
           {% endif %}
         </div>
         <div class="k-card-badges">

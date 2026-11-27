@@ -50,26 +50,22 @@ def garantir_atalho_area_de_trabalho():
         if os.path.exists(icone_src):
             shutil.copy2(icone_src, icone_dst)
 
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        if not os.path.exists(desktop):
-            desktop = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
-        lnk_path = os.path.join(desktop, "RB Psicanálise.lnk")
-
-        if os.path.exists(desktop):
-            ps_cmd = (
-                f"$ws = New-Object -ComObject WScript.Shell; "
-                f"$s = $ws.CreateShortcut('{lnk_path}'); "
-                f"$s.TargetPath = '{destino_exe}'; "
-                f"$s.WorkingDirectory = '{app_dir}'; "
-                f"$s.IconLocation = '{icone_dst}'; "
-                f"$s.Description = 'RB Psicanálise — Sistema Clínico'; "
-                f"$s.Save()"
-            )
-            subprocess.run(
-                ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                timeout=8,
-            )
+        ps_cmd = (
+            f"$desktop = [Environment]::GetFolderPath('Desktop'); "
+            f"$lnk = Join-Path $desktop 'RB Psicanálise.lnk'; "
+            f"$ws = New-Object -ComObject WScript.Shell; "
+            f"$s = $ws.CreateShortcut($lnk); "
+            f"$s.TargetPath = '{destino_exe}'; "
+            f"$s.WorkingDirectory = '{app_dir}'; "
+            f"$s.IconLocation = '{icone_dst}'; "
+            f"$s.Description = 'RB Psicanálise — Sistema Clínico'; "
+            f"$s.Save()"
+        )
+        subprocess.run(
+            ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd],
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            timeout=8,
+        )
     except Exception:
         pass
 

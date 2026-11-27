@@ -86,6 +86,12 @@ class Paciente(db.Model):
     envios_formularios = db.relationship(
         "FormularioEnvio", backref="paciente", cascade="all, delete-orphan"
     )
+    evolucoes = db.relationship(
+        "EvolucaoClinica",
+        backref="paciente",
+        cascade="all, delete-orphan",
+        order_by="EvolucaoClinica.numero_sessao.asc()",
+    )
 
     @property
     def cadastro(self) -> dict:
@@ -135,7 +141,24 @@ class Agendamento(db.Model):
     pagamento = db.Column(db.String(20), default="Pendente")  # Pago | Pendente
     valor = db.Column(db.Float, default=0.0)
     observacao = db.Column(db.Text, default="")
+    lembrete_enviado = db.Column(db.Boolean, nullable=False, default=False)
     criado_em = db.Column(db.DateTime, default=utcnow)
+
+
+class EvolucaoClinica(db.Model):
+    """Ficha de Acompanhamento Clínico (evolução por sessão na mesma ficha do paciente)."""
+    __tablename__ = "evolucoes_clinicas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey("pacientes.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    numero_sessao = db.Column(db.Integer, nullable=False, default=1)
+    data_sessao = db.Column(db.String(20), nullable=False, default="")
+    tema_central = db.Column(db.String(220), default="")
+    anotacoes_clinicas = db.Column(db.Text, nullable=False, default="")
+    intervencoes = db.Column(db.Text, default="")
+    criado_em = db.Column(db.DateTime, default=utcnow)
+    atualizado_em = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
 
 class Formulario(db.Model):
@@ -210,6 +233,11 @@ def init_db(app):
             db.session.execute(
                 db.text("UPDATE formularios SET sigiloso = 1 WHERE lower(titulo) LIKE '%anamnese%'")
             )
+            db.session.commit()
+
+        cols_ag = [c["name"] for c in insp.get_columns("agendamentos")]
+        if "lembrete_enviado" not in cols_ag:
+            db.session.execute(db.text("ALTER TABLE agendamentos ADD COLUMN lembrete_enviado BOOLEAN NOT NULL DEFAULT 0"))
             db.session.commit()
 
         # 1. Seed de usuários iniciais

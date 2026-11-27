@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import threading
 import time
@@ -25,6 +26,7 @@ from flask_login import (
     logout_user,
 )
 from flask_wtf.csrf import CSRFProtect
+from markupsafe import Markup
 
 from config import BASE_DIR, DATA_DIR, RESOURCE_DIR, Config
 from updater import aplicar_atualizacao_exe, verificar_atualizacao
@@ -33,6 +35,7 @@ from models import (
     Agendamento,
     Anamnese,
     ConfiguracaoSistema,
+    EvolucaoClinica,
     Formulario,
     FormularioEnvio,
     KanbanColuna,
@@ -85,11 +88,46 @@ def create_app(test_config=None):
 
     init_db(app)
 
+    _icon_cache = {}
+
+    def render_icon(name: str, size: int = 18) -> Markup:
+        if name not in _icon_cache:
+            icon_path = os.path.join(RESOURCE_DIR, "static", "icons", f"{name}.svg")
+            if os.path.exists(icon_path):
+                with open(icon_path, "r", encoding="utf-8") as f:
+                    _icon_cache[name] = f.read().strip()
+            else:
+                _icon_cache[name] = ""
+        svg = _icon_cache[name]
+        if not svg:
+            return Markup("")
+        # Remove eventuais width/height fixos (ex: whatsapp.svg 256x258) e força o tamanho exato
+        def _resize(m):
+            tag = re.sub(r'\s+(?:width|height|style)="[^"]*"', "", m.group(0))
+            return tag[:-1] + f' style="width:{size}px;height:{size}px;flex:none;vertical-align:middle;">'
+
+        svg_sized = re.sub(r"<svg\b[^>]*>", _resize, svg, count=1)
+        return Markup(svg_sized)
+
     @app.context_processor
     def inject_globals():
+        notif_count = 0
+        if current_user.is_authenticated:
+            hoje_ini = datetime.combine(datetime.now().date(), datetime.min.time())
+            amanha_fim = hoje_ini + timedelta(days=2)
+            prox_sem_lembrete = Agendamento.query.filter(
+                Agendamento.inicio >= hoje_ini,
+                Agendamento.inicio < amanha_fim,
+                Agendamento.status != "Cancelado",
+                Agendamento.lembrete_enviado == False,
+            ).count()
+            pags_pendentes = Agendamento.query.filter_by(compareceu="Sim", pagamento="Pendente").count()
+            notif_count = prox_sem_lembrete + pags_pendentes
         return {
             "app_version": APP_VERSION,
             "is_frozen_exe": getattr(sys, "frozen", False),
+            "icon": render_icon,
+            "notif_count": notif_count,
         }
 
     @app.errorhandler(403)
@@ -145,6 +183,48 @@ def create_app(test_config=None):
             .all()
         )
         form_respondidos = FormularioEnvio.query.filter_by(status="Respondido").count()
+
+        # Dados reais para fx-chart (Últimos 14 dias de atendimentos)
+        hoje = datetime.now().date()
+        chart_labels = []
+        chart_values = []
+        for offset in range(13, -1, -1):
+            dia = hoje - timedelta(days=offset)
+            ini_dia = datetime.combine(dia, datetime.min.time())
+            fim_dia = datetime.combine(dia, datetime.max.time())
+            qtd = Agendamento.query.filter(
+                Agendamento.inicio >= ini_dia,
+                Agendamento.inicio <= fim_dia,
+                Agendamento.status != "Cancelado",
+            ).count()
+            chart_labels.append(dia.strftime("%d/%m"))
+            chart_values.append(qtd)
+        chart_total = sum(chart_values)
+        chart_max = max(max(chart_values), 5)
+
+        # Dados reais para fx-bars (Receita paga nos últimos 6 meses)
+        meses_pt = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        bars_labels = []
+        bars_values = []
+        for m_offset in range(5, -1, -1):
+            mes_idx = (hoje.month - 1 - m_offset) % 12
+            ano = hoje.year + ((hoje.month - 1 - m_offset) // 12)
+            ini_mes = datetime(ano, mes_idx + 1, 1)
+            if mes_idx == 11:
+                fim_mes = datetime(ano + 1, 1, 1)
+            else:
+                fim_mes = datetime(ano, mes_idx + 2, 1)
+            ags_mes = Agendamento.query.filter(
+                Agendamento.inicio >= ini_mes,
+                Agendamento.inicio < fim_mes,
+                Agendamento.pagamento == "Pago",
+            ).all()
+            soma_mes = round(sum(a.valor or 0.0 for a in ags_mes), 2)
+            bars_labels.append(meses_pt[mes_idx])
+            bars_values.append(soma_mes)
+        bars_atual = bars_values[-1] if bars_values else 0.0
+        bars_max = max(max(bars_values), 500.0)
+
         return render_template(
             "dashboard.html",
             total_pacientes=total_pacientes,
@@ -154,6 +234,14 @@ def create_app(test_config=None):
             valor_recebido=valor_recebido,
             ultimos_pacientes=ultimos_pacientes,
             form_respondidos=form_respondidos,
+            chart_labels=chart_labels,
+            chart_values=chart_values,
+            chart_total=chart_total,
+            chart_max=chart_max,
+            bars_labels=bars_labels,
+            bars_values=bars_values,
+            bars_atual=bars_atual,
+            bars_max=bars_max,
         )
 
     # =========================================================================
@@ -221,8 +309,8 @@ def create_app(test_config=None):
             abort(404)
 
         aba = request.args.get("aba", "cadastro")
-        # Atendente não pode abrir a aba anamnese diretamente
-        if aba == "anamnese" and not current_user.pode_ver_clinico:
+        # Atendente não pode abrir abas sigilosas (Anamnese ou Acompanhamento Clínico)
+        if aba in ("anamnese", "acompanhamento") and not current_user.pode_ver_clinico:
             abort(403)
 
         sessoes = (
@@ -235,6 +323,16 @@ def create_app(test_config=None):
             .order_by(FormularioEnvio.criado_em.desc())
             .all()
         )
+        evolucoes = []
+        proximo_num_evolucao = 1
+        if current_user.pode_ver_clinico:
+            evolucoes = (
+                EvolucaoClinica.query.filter_by(paciente_id=paciente.id)
+                .order_by(EvolucaoClinica.numero_sessao.asc(), EvolucaoClinica.id.asc())
+                .all()
+            )
+            if evolucoes:
+                proximo_num_evolucao = max(e.numero_sessao for e in evolucoes) + 1
         cfg_url = db.session.get(ConfiguracaoSistema, "app_base_url")
         base_url = (cfg_url.valor if cfg_url and cfg_url.valor else app.config["APP_BASE_URL"]).rstrip("/")
         resumo_sessoes = _calcular_resumo_sessoes(sessoes)
@@ -247,6 +345,8 @@ def create_app(test_config=None):
             anam=anamnese.dados if anamnese else {},
             sessoes=sessoes,
             envios=envios,
+            evolucoes=evolucoes,
+            proximo_num_evolucao=proximo_num_evolucao,
             base_url=base_url,
             resumo=resumo_sessoes,
             aba=aba,
@@ -305,6 +405,47 @@ def create_app(test_config=None):
         db.session.commit()
         flash("Ficha de Anamnese Clínica salva com sigilo.", "success")
         return redirect(url_for("paciente_detalhe", paciente_id=paciente.id, aba="anamnese"))
+
+    @app.route("/paciente/<int:paciente_id>/acompanhamento/nova", methods=["POST"])
+    @roles_required("psicanalista", "admin_dev")
+    def paciente_nova_evolucao(paciente_id):
+        paciente = db.session.get(Paciente, paciente_id)
+        if not paciente:
+            abort(404)
+
+        try:
+            num = int(request.form.get("numero_sessao", 1))
+        except ValueError:
+            num = 1
+
+        ev = EvolucaoClinica(
+            paciente_id=paciente.id,
+            usuario_id=current_user.id,
+            numero_sessao=num,
+            data_sessao=request.form.get("data_sessao", datetime.now().strftime("%d/%m/%Y")).strip(),
+            tema_central=request.form.get("tema_central", "").strip(),
+            anotacoes_clinicas=request.form.get("anotacoes_clinicas", "").strip(),
+            intervencoes=request.form.get("intervencoes", "").strip(),
+        )
+        db.session.add(ev)
+        db.session.commit()
+        flash(f"Anotação da Sessão {num:02d} registrada na Ficha de Acompanhamento.", "success")
+        return redirect(url_for("paciente_detalhe", paciente_id=paciente.id, aba="acompanhamento"))
+
+    @app.route("/paciente/<int:paciente_id>/acompanhamento/<int:ev_id>/editar", methods=["POST"])
+    @roles_required("psicanalista", "admin_dev")
+    def paciente_editar_evolucao(paciente_id, ev_id):
+        ev = db.session.get(EvolucaoClinica, ev_id)
+        if not ev or ev.paciente_id != paciente_id:
+            abort(404)
+
+        ev.data_sessao = request.form.get("data_sessao", ev.data_sessao).strip()
+        ev.tema_central = request.form.get("tema_central", "").strip()
+        ev.anotacoes_clinicas = request.form.get("anotacoes_clinicas", "").strip()
+        ev.intervencoes = request.form.get("intervencoes", "").strip()
+        db.session.commit()
+        flash(f"Anotação da Sessão {ev.numero_sessao:02d} atualizada.", "success")
+        return redirect(url_for("paciente_detalhe", paciente_id=paciente_id, aba="acompanhamento"))
 
     @app.route("/paciente/<int:paciente_id>/sessao/nova", methods=["POST"])
     @login_required
@@ -406,6 +547,20 @@ def create_app(test_config=None):
                 paciente=paciente,
                 sessoes=sessoes,
                 resumo=_calcular_resumo_sessoes(sessoes),
+                hoje=datetime.now(),
+            )
+        if tipo == "acompanhamento":
+            if not current_user.pode_ver_clinico:
+                abort(403)
+            evolucoes = (
+                EvolucaoClinica.query.filter_by(paciente_id=paciente.id)
+                .order_by(EvolucaoClinica.numero_sessao.asc(), EvolucaoClinica.id.asc())
+                .all()
+            )
+            return render_template(
+                "impressao_acompanhamento.html",
+                paciente=paciente,
+                evolucoes=evolucoes,
                 hoje=datetime.now(),
             )
         abort(404)
@@ -513,6 +668,106 @@ def create_app(test_config=None):
 
         threading.Thread(target=_encerrar, daemon=True).start()
         return jsonify({"ok": True, "mensagem": msg})
+
+    # =========================================================================
+    # CENTRAL DE NOTIFICAÇÕES & LEMBRETES WHATSAPP (RECEPÇÃO / PSICANALISTA)
+    # =========================================================================
+    def _wpp_url(telefone_raw: str, texto: str) -> str:
+        digits = "".join(ch for ch in (telefone_raw or "") if ch.isdigit())
+        if not digits:
+            return ""
+        if not digits.startswith("55") and len(digits) <= 11:
+            digits = "55" + digits
+        return f"https://wa.me/{digits}?text={quote(texto)}"
+
+    @app.route("/notificacoes")
+    @login_required
+    def notificacoes():
+        agora = datetime.now()
+        hoje_ini = datetime.combine(agora.date(), datetime.min.time())
+        amanha_fim = hoje_ini + timedelta(days=2)
+
+        cfg_psi = db.session.get(ConfiguracaoSistema, "whatsapp_psicanalista")
+        tel_psi = cfg_psi.valor if cfg_psi and cfg_psi.valor else ""
+
+        proximos = (
+            Agendamento.query.filter(
+                Agendamento.inicio >= hoje_ini,
+                Agendamento.inicio < amanha_fim,
+                Agendamento.status != "Cancelado",
+            )
+            .order_by(Agendamento.inicio.asc())
+            .all()
+        )
+        agenda_cards = []
+        for ag in proximos:
+            pac = ag.paciente
+            dia_label = "Hoje" if ag.inicio.date() == agora.date() else "Amanhã"
+            msg_pac = (
+                f"Olá, {pac.nome_completo.split()[0] if pac else 'Paciente'}! "
+                f"Passando para lembrar da sua sessão na *RB Psicanálise* "
+                f"{dia_label.lower()} ({ag.inicio.strftime('%d/%m')}) às *{ag.inicio.strftime('%H:%M')}* "
+                f"({ag.modalidade}). Podemos confirmar sua presença?"
+            )
+            msg_psi = (
+                f"Lembrete de Agenda — *RB Psicanálise*:\n"
+                f"• Paciente: *{pac.nome_completo if pac else 'Paciente'}*\n"
+                f"• Horário: *{dia_label} ({ag.inicio.strftime('%d/%m')}) às {ag.inicio.strftime('%H:%M')}*\n"
+                f"• Modalidade: {ag.modalidade}"
+            )
+            agenda_cards.append(
+                {
+                    "ag": ag,
+                    "dia_label": dia_label,
+                    "wpp_paciente": _wpp_url(pac.telefone if pac else "", msg_pac),
+                    "wpp_psicanalista": _wpp_url(tel_psi, msg_psi),
+                }
+            )
+
+        pendentes_raw = (
+            Agendamento.query.filter_by(compareceu="Sim", pagamento="Pendente")
+            .order_by(Agendamento.inicio.desc())
+            .all()
+        )
+        pendentes_cards = []
+        for ag in pendentes_raw:
+            pac = ag.paciente
+            msg_cob = (
+                f"Olá, {pac.nome_completo.split()[0] if pac else 'Paciente'}! "
+                f"Tudo bem? Consta em aberto o acerto da sessão do dia *{ag.inicio.strftime('%d/%m/%Y')}* "
+                f"(R$ {(ag.valor or 0):.2f}) na *RB Psicanálise*. Caso já tenha efetuado, favor desconsiderar."
+            )
+            pendentes_cards.append(
+                {
+                    "ag": ag,
+                    "wpp_cobranca": _wpp_url(pac.telefone if pac else "", msg_cob),
+                }
+            )
+
+        forms_recentes = (
+            FormularioEnvio.query.filter_by(status="Respondido")
+            .order_by(FormularioEnvio.respondido_em.desc())
+            .limit(8)
+            .all()
+        )
+
+        return render_template(
+            "notificacoes.html",
+            agenda_cards=agenda_cards,
+            pendentes_cards=pendentes_cards,
+            forms_recentes=forms_recentes,
+            tem_tel_psi=bool(tel_psi.strip()),
+        )
+
+    @app.route("/api/notificacoes/marcar-lembrete/<int:ag_id>", methods=["POST"])
+    @login_required
+    def api_marcar_lembrete(ag_id):
+        ag = db.session.get(Agendamento, ag_id)
+        if not ag:
+            return jsonify({"ok": False}), 404
+        ag.lembrete_enviado = not ag.lembrete_enviado
+        db.session.commit()
+        return jsonify({"ok": True, "lembrete_enviado": ag.lembrete_enviado})
 
     # =========================================================================
     # ETAPA 2: QUADRO KANBAN FLEXÍVEL

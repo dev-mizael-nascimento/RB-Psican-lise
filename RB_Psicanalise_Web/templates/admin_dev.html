@@ -6,7 +6,7 @@
     <h1>Painel de Manutenção & Segurança (Admin Dev)</h1>
     <p>Gestão de usuários, URL base para links públicos e backup do banco SQLite</p>
   </div>
-  <a href="{{ url_for('admin_dev_backup') }}" class="btn btn-gold">⬇️ Baixar Backup do Banco (.db)</a>
+  <a href="{{ url_for('admin_dev_backup') }}" class="btn btn-gold">{{ icon('ui-download', 16) }} Baixar Backup do Banco (.db)</a>
 </div>
 
 <div class="form-grid">
@@ -36,7 +36,7 @@
     <p style="font-size:0.82rem; color:#475569; margin-bottom:6px;"><strong>Versão Instalada:</strong> v{{ app_version }}</p>
     <p style="font-size:0.82rem; color:#475569; margin-bottom:6px; word-break:break-all;"><strong>Pasta Persistente de Dados:</strong><br>{{ data_dir }}</p>
     <p style="font-size:0.82rem; color:#475569; margin-bottom:12px; word-break:break-all;"><strong>Banco Conectado:</strong><br>{{ db_uri }}</p>
-    <button type="button" class="btn btn-outline" onclick="verificarAgora()">🔄 Verificar Atualizações no GitHub</button>
+    <button type="button" class="btn btn-outline" onclick="verificarAgora()">{{ icon('ui-refresh-cw', 15) }} Verificar Atualizações no GitHub</button>
     <div id="statusCheckUpdate" style="font-size:0.8rem; margin-top:8px; color:#334155;"></div>
   </div>
 </div>

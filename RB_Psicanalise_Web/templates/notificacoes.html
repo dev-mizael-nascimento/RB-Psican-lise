@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Notificações & Lembretes — RB Psicanálise{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Central de Notificações & Lembretes WhatsApp</h1>
+    <p>Lembretes de agenda para o paciente e para o psicanalista, pendências e novos formulários</p>
+  </div>
+  <a href="{{ url_for('agenda') }}" class="btn btn-outline">{{ icon('ui-calendar-days', 15) }} Abrir Agenda Visual</a>
+</div>
+
+{% if not tem_tel_psi %}
+<div class="flash flash-warning">
+  O WhatsApp do(a) Psicanalista ainda não foi configurado. Peça ao perfil <strong>admin_dev</strong> para cadastrar em <em>Manutenção (Dev)</em> para habilitar o botão "Avisar Psicanalista".
+</div>
+{% endif %}
+
+<!-- Compromissos de Hoje e Amanhã -->
+<div class="card">
+  <h2 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+    {{ icon('ui-bell', 18) }} Compromissos da Agenda (Hoje e Amanhã)
+  </h2>
+  {% if agenda_cards %}
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Quando</th>
+          <th>Paciente</th>
+          <th>Modalidade</th>
+          <th>Lembrete Paciente</th>
+          <th>Avisar Psicanalista</th>
+          <th>Status Lembrete</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in agenda_cards %}
+        {% set ag = item.ag %}
+        <tr>
+          <td>
+            <span class="badge {% if item.dia_label == 'Hoje' %}badge-warn{% else %}badge-slate{% endif %}">{{ item.dia_label }}</span>
+            <strong style="margin-left:4px;">{{ ag.inicio.strftime('%d/%m %H:%M') }}</strong>
+          </td>
+          <td>
+            <a href="{{ url_for('paciente_detalhe', paciente_id=ag.paciente_id) }}" style="font-weight:700; color:#0f172a; text-decoration:none;">
+              {{ ag.paciente.nome_completo if ag.paciente else 'Paciente' }}
+            </a>
+          </td>
+          <td>{{ ag.modalidade }}</td>
+          <td>
+            {% if item.wpp_paciente %}
+            <a href="{{ item.wpp_paciente }}" target="_blank" class="btn" style="padding:5px 10px; font-size:0.76rem; background:#059669; color:#fff;" onclick="marcarEnviadoAuto({{ ag.id }})">
+              {{ icon('whatsapp', 13) }} Lembrar Paciente
+            </a>
+            {% else %}
+            <span style="font-size:0.76rem; color:#94a3b8;">Sem telefone</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.wpp_psicanalista %}
+            <a href="{{ item.wpp_psicanalista }}" target="_blank" class="btn btn-dark" style="padding:5px 10px; font-size:0.76rem;">
+              {{ icon('whatsapp', 13) }} Avisar Psicanalista
+            </a>
+            {% else %}
+            <span style="font-size:0.76rem; color:#94a3b8;">Não configurado</span>
+            {% endif %}
+          </td>
+          <td>
+            <button type="button" id="btn-lemb-{{ ag.id }}" class="btn {% if ag.lembrete_enviado %}btn-outline{% else %}btn-gold{% endif %}" style="padding:5px 10px; font-size:0.75rem;" onclick="alternarLembrete({{ ag.id }})">
+              {% if ag.lembrete_enviado %}{{ icon('ui-circle-check', 13) }} Enviado{% else %}Marcar Enviado{% endif %}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:#64748b; font-size:0.86rem;">Nenhum compromisso agendado para hoje ou amanhã.</p>
+  {% endif %}
+</div>
+
+<div class="form-grid">
+  <!-- Pagamentos Pendentes -->
+  <div class="card col-7">
+    <h2 style="font-family:'Cinzel',serif; font-size:0.98rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+      {{ icon('ui-credit-card', 17) }} Sessões Realizadas com Pagamento Pendente
+    </h2>
+    {% if pendentes_cards %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead><tr><th>Data</th><th>Paciente</th><th>Valor</th><th>Ação WhatsApp</th></tr></thead>
+        <tbody>
+          {% for item in pendentes_cards %}
+          {% set ag = item.ag %}
+          <tr>
+            <td>{{ ag.inicio.strftime('%d/%m/%Y') }}</td>
+            <td><a href="{{ url_for('paciente_detalhe', paciente_id=ag.paciente_id, aba='sessoes') }}" style="font-weight:700; color:#0f172a;">{{ ag.paciente.nome_completo }}</a></td>
+            <td><strong style="color:#92400e;">R$ {{ "%.2f"|format(ag.valor or 0) }}</strong></td>
+            <td>
+              {% if item.wpp_cobranca %}
+              <a href="{{ item.wpp_cobranca }}" target="_blank" class="btn" style="padding:4px 10px; font-size:0.75rem; background:#059669; color:#fff;">
+                {{ icon('whatsapp', 13) }} Enviar Lembrete
+              </a>
+              {% else %}
+              <span style="font-size:0.75rem; color:#94a3b8;">Sem telefone</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color:#64748b; font-size:0.86rem;">Nenhum pagamento pendente no momento.</p>
+    {% endif %}
+  </div>
+
+  <!-- Formulários Respondidos Recentemente -->
+  <div class="card col-5">
+    <h2 style="font-family:'Cinzel',serif; font-size:0.98rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+      {{ icon('ui-clipboard-list', 17) }} Últimos Formulários Respondidos
+    </h2>
+    {% if forms_recentes %}
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      {% for e in forms_recentes %}
+      <div style="padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div>
+          <div style="font-weight:700; font-size:0.83rem;">{{ e.paciente.nome_completo }}</div>
+          <div style="font-size:0.73rem; color:#64748b;">{{ e.formulario.titulo if e.formulario else '' }} • {{ e.respondido_em.strftime('%d/%m %H:%M') if e.respondido_em else '' }}</div>
+        </div>
+        <a href="{{ url_for('paciente_detalhe', paciente_id=e.paciente_id, aba='formularios') }}" class="btn btn-outline" style="padding:4px 9px; font-size:0.74rem;">Abrir</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#64748b; font-size:0.86rem;">Nenhuma resposta recente.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const CSRF_TOKEN = "{{ csrf_token() }}";
+
+  async function alternarLembrete(agId) {
+    const r = await fetch(`/api/notificacoes/marcar-lembrete/${agId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+    });
+    if (r.ok) location.reload();
+  }
+
+  async function marcarEnviadoAuto(agId) {
+    const btn = document.getElementById('btn-lemb-' + agId);
+    if (btn && !btn.innerText.includes('Enviado')) {
+      await fetch(`/api/notificacoes/marcar-lembrete/${agId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+      });
+      setTimeout(() => location.reload(), 600);
+    }
+  }
+</script>
+{% endblock %}

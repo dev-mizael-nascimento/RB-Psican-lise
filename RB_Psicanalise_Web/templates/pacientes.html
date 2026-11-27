@@ -6,13 +6,13 @@
     <h1>Pacientes & Prontuários</h1>
     <p>Cadastro unificado, anamnese sigilosa e controle individual de sessões</p>
   </div>
-  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">+ Novo Paciente</a>
+  <a href="{{ url_for('paciente_novo') }}" class="btn btn-gold">{{ icon('ui-user-plus', 16) }} Novo Paciente</a>
 </div>
 
 <div class="card">
   <form method="GET" action="{{ url_for('pacientes_lista') }}" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
     <input type="text" name="q" value="{{ busca }}" placeholder="Pesquisar por nome, nº de prontuário, CPF ou telefone..." style="flex:1; min-width:200px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px;">
-    <button type="submit" class="btn btn-dark">Filtrar</button>
+    <button type="submit" class="btn btn-dark">{{ icon('ui-search', 15) }} Filtrar</button>
     {% if busca %}<a href="{{ url_for('pacientes_lista') }}" class="btn btn-outline">Limpar</a>{% endif %}
   </form>
 

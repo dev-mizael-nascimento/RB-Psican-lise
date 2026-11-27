@@ -31,6 +31,8 @@
       padding: 0;
     }
 
+    @view-transition { navigation: auto; }
+
     html {
       /* Escala fluida: legível em celular/notebook e ampliada confortavelmente em TVs/4K */
       font-size: clamp(14px, 0.35vw + 11px, 18px);
@@ -211,6 +213,19 @@
       width: 100%;
       max-width: 1920px;
       margin: 0 auto;
+      animation: pageEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+    }
+    .main-container.is-leaving {
+      opacity: 0.35;
+      transform: translateY(4px);
+    }
+    @keyframes pageEnter {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .main-container { animation: none; transition: none; }
     }
 
     .page-header {
@@ -523,6 +538,8 @@
         align-items: flex-start;
       }
     }
+    .ic { display: inline-block; flex: none; vertical-align: middle; object-fit: contain; }
+    .ic-svg { display: inline-block; flex: none; vertical-align: middle; }
   </style>
   {% block head_extra %}{% endblock %}
 </head>
@@ -530,7 +547,7 @@
 <body>
   <div class="mobile-topbar">
     <div class="mobile-brand">RB PSICANÁLISE</div>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Abrir Menu">☰ Menu</button>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Abrir Menu">{{ icon('ui-menu', 18) }} Menu</button>
   </div>
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -542,19 +559,23 @@
       </div>
       <nav class="nav-links">
         <a href="{{ url_for('dashboard') }}"
-          class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
+          class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">{{ icon('ui-layout-dashboard', 18) }} Dashboard</a>
         <a href="{{ url_for('pacientes_lista') }}"
-          class="nav-link {% if request.endpoint in ('pacientes_lista', 'paciente_novo', 'paciente_detalhe') %}active{% endif %}">🗂️
-          Pacientes & Prontuários</a>
-        <a href="{{ url_for('kanban') }}" class="nav-link {% if request.endpoint == 'kanban' %}active{% endif %}">📋
-          Quadro Kanban</a>
-        <a href="{{ url_for('agenda') }}" class="nav-link {% if request.endpoint == 'agenda' %}active{% endif %}">📅
-          Agenda Visual</a>
+          class="nav-link {% if request.endpoint in ('pacientes_lista', 'paciente_novo', 'paciente_detalhe') %}active{% endif %}">{{ icon('ui-users-round', 18) }} Pacientes & Prontuários</a>
+        <a href="{{ url_for('kanban') }}" class="nav-link {% if request.endpoint == 'kanban' %}active{% endif %}">{{ icon('ui-columns-3', 18) }} Quadro Kanban</a>
+        <a href="{{ url_for('agenda') }}" class="nav-link {% if request.endpoint == 'agenda' %}active{% endif %}">{{ icon('ui-calendar-days', 18) }} Agenda Visual</a>
         <a href="{{ url_for('formularios') }}"
-          class="nav-link {% if request.endpoint == 'formularios' %}active{% endif %}">📝 Formulários</a>
+          class="nav-link {% if request.endpoint == 'formularios' %}active{% endif %}">{{ icon('ui-clipboard-list', 18) }} Formulários</a>
+        <a href="{{ url_for('notificacoes') }}"
+          class="nav-link {% if request.endpoint == 'notificacoes' %}active{% endif %}">
+          {{ icon('ui-bell', 18) }} Notificações
+          {% if notif_count > 0 %}
+          <span style="margin-left:auto; background:#dc2626; color:#fff; font-size:0.68rem; font-weight:700; padding:1px 7px; border-radius:999px;">{{ notif_count }}</span>
+          {% endif %}
+        </a>
         {% if current_user.is_admin_dev %}
         <a href="{{ url_for('admin_dev') }}"
-          class="nav-link {% if request.endpoint == 'admin_dev' %}active{% endif %}">⚙️ Manutenção (Dev)</a>
+          class="nav-link {% if request.endpoint == 'admin_dev' %}active{% endif %}">{{ icon('ui-settings', 18) }} Manutenção (Dev)</a>
         {% endif %}
       </nav>
     </div>
@@ -565,7 +586,7 @@
       <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">Versão v{{ app_version }}</div>
       <form method="POST" action="{{ url_for('logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-logout">Sair do Sistema</button>
+        <button type="submit" class="btn-logout" style="display:flex;align-items:center;justify-content:center;gap:6px;">{{ icon('ui-log-out', 15) }} Sair do Sistema</button>
       </form>
     </div>
   </aside>
@@ -599,6 +620,15 @@
       document.getElementById('appSidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
     }
+
+    // Transição suave ao navegar pelo menu ou abas sem atrasar o sistema
+    document.querySelectorAll('.nav-link, .tab-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || this.target === '_blank') return;
+        const cont = document.querySelector('.main-container');
+        if (cont) cont.classList.add('is-leaving');
+      });
+    });
 
     (function checarUpdateDiscreto() {
       const cache = sessionStorage.getItem('rb_update_check');
