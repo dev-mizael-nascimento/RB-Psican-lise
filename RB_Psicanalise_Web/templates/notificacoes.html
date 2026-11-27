@@ -15,10 +15,10 @@
 </div>
 {% endif %}
 
-<!-- Compromissos de Hoje e Amanhã -->
+<!-- Compromissos da Semana -->
 <div class="card">
   <h2 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-    {{ icon('ui-bell', 18) }} Compromissos da Agenda (Hoje e Amanhã)
+    {{ icon('ui-bell', 18) }} Compromissos da Agenda (Semana — Próximos 7 Dias)
   </h2>
   {% if agenda_cards %}
   <div class="table-responsive">
@@ -45,11 +45,17 @@
             <a href="{{ url_for('paciente_detalhe', paciente_id=ag.paciente_id) }}" style="font-weight:700; color:#0f172a; text-decoration:none;">
               {{ ag.paciente.nome_completo if ag.paciente else 'Paciente' }}
             </a>
+            <details style="margin-top:4px;">
+              <summary style="font-size:0.72rem; color:#64748b; cursor:pointer;">Ver mensagem programada</summary>
+              <div style="margin-top:4px; padding:6px 8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:0.74rem; color:#334155; max-width:340px; white-space:normal;">
+                {{ item.msg_pac }}
+              </div>
+            </details>
           </td>
           <td>{{ ag.modalidade }}</td>
           <td>
             {% if item.wpp_paciente %}
-            <a href="{{ item.wpp_paciente }}" target="_blank" class="btn" style="padding:5px 10px; font-size:0.76rem; background:#059669; color:#fff;" onclick="marcarEnviadoAuto({{ ag.id }})">
+            <a href="{{ item.wpp_paciente }}" target="_blank" title="{{ item.msg_pac }}" class="btn" style="padding:5px 10px; font-size:0.76rem; background:#059669; color:#fff;" onclick="marcarEnviadoAuto({{ ag.id }})">
               {{ icon('whatsapp', 13) }} Lembrar Paciente
             </a>
             {% else %}
@@ -58,7 +64,7 @@
           </td>
           <td>
             {% if item.wpp_psicanalista %}
-            <a href="{{ item.wpp_psicanalista }}" target="_blank" class="btn btn-dark" style="padding:5px 10px; font-size:0.76rem;">
+            <a href="{{ item.wpp_psicanalista }}" target="_blank" title="{{ item.msg_psi }}" class="btn btn-dark" style="padding:5px 10px; font-size:0.76rem;">
               {{ icon('whatsapp', 13) }} Avisar Psicanalista
             </a>
             {% else %}
@@ -76,7 +82,7 @@
     </table>
   </div>
   {% else %}
-  <p style="color:#64748b; font-size:0.86rem;">Nenhum compromisso agendado para hoje ou amanhã.</p>
+  <p style="color:#64748b; font-size:0.86rem;">Nenhum compromisso agendado para os próximos 7 dias.</p>
   {% endif %}
 </div>
 

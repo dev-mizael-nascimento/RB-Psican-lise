@@ -113,16 +113,25 @@ def create_app(test_config=None):
     def inject_globals():
         notif_count = 0
         if current_user.is_authenticated:
+            visto = current_user.ultima_leitura_notif
             hoje_ini = datetime.combine(datetime.now().date(), datetime.min.time())
-            amanha_fim = hoje_ini + timedelta(days=2)
-            prox_sem_lembrete = Agendamento.query.filter(
+            semana_fim = hoje_ini + timedelta(days=7)
+
+            q_ag = Agendamento.query.filter(
                 Agendamento.inicio >= hoje_ini,
-                Agendamento.inicio < amanha_fim,
+                Agendamento.inicio < semana_fim,
                 Agendamento.status != "Cancelado",
                 Agendamento.lembrete_enviado == False,
-            ).count()
-            pags_pendentes = Agendamento.query.filter_by(compareceu="Sim", pagamento="Pendente").count()
-            notif_count = prox_sem_lembrete + pags_pendentes
+            )
+            q_pag = Agendamento.query.filter_by(compareceu="Sim", pagamento="Pendente")
+            q_frm = FormularioEnvio.query.filter_by(status="Respondido")
+
+            if visto:
+                q_ag = q_ag.filter(Agendamento.criado_em > visto)
+                q_pag = q_pag.filter(Agendamento.criado_em > visto)
+                q_frm = q_frm.filter(FormularioEnvio.respondido_em > visto)
+
+            notif_count = q_ag.count() + q_pag.count() + q_frm.count()
         return {
             "app_version": APP_VERSION,
             "is_frozen_exe": getattr(sys, "frozen", False),
@@ -683,9 +692,13 @@ def create_app(test_config=None):
     @app.route("/notificacoes")
     @login_required
     def notificacoes():
+        # Marca as notificações como visualizadas pelo usuário atual
+        current_user.ultima_leitura_notif = utcnow()
+        db.session.commit()
+
         agora = datetime.now()
         hoje_ini = datetime.combine(agora.date(), datetime.min.time())
-        amanha_fim = hoje_ini + timedelta(days=2)
+        semana_fim = hoje_ini + timedelta(days=7)
 
         cfg_psi = db.session.get(ConfiguracaoSistema, "whatsapp_psicanalista")
         tel_psi = cfg_psi.valor if cfg_psi and cfg_psi.valor else ""
@@ -693,20 +706,32 @@ def create_app(test_config=None):
         proximos = (
             Agendamento.query.filter(
                 Agendamento.inicio >= hoje_ini,
-                Agendamento.inicio < amanha_fim,
+                Agendamento.inicio < semana_fim,
                 Agendamento.status != "Cancelado",
             )
             .order_by(Agendamento.inicio.asc())
             .all()
         )
+        dias_semana = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
         agenda_cards = []
         for ag in proximos:
             pac = ag.paciente
-            dia_label = "Hoje" if ag.inicio.date() == agora.date() else "Amanhã"
+            diff_dias = (ag.inicio.date() - agora.date()).days
+            if diff_dias == 0:
+                dia_label = "Hoje"
+                quando_pac = f"hoje ({ag.inicio.strftime('%d/%m')})"
+            elif diff_dias == 1:
+                dia_label = "Amanhã"
+                quando_pac = f"amanhã ({ag.inicio.strftime('%d/%m')})"
+            else:
+                dia_label = dias_semana[ag.inicio.weekday()]
+                prep = "no" if ag.inicio.weekday() in (5, 6) else "na"
+                quando_pac = f"{prep} {dia_label.lower()} ({ag.inicio.strftime('%d/%m')})"
+
             msg_pac = (
                 f"Olá, {pac.nome_completo.split()[0] if pac else 'Paciente'}! "
                 f"Passando para lembrar da sua sessão na *RB Psicanálise* "
-                f"{dia_label.lower()} ({ag.inicio.strftime('%d/%m')}) às *{ag.inicio.strftime('%H:%M')}* "
+                f"{quando_pac} às *{ag.inicio.strftime('%H:%M')}* "
                 f"({ag.modalidade}). Podemos confirmar sua presença?"
             )
             msg_psi = (
@@ -719,6 +744,8 @@ def create_app(test_config=None):
                 {
                     "ag": ag,
                     "dia_label": dia_label,
+                    "msg_pac": msg_pac,
+                    "msg_psi": msg_psi,
                     "wpp_paciente": _wpp_url(pac.telefone if pac else "", msg_pac),
                     "wpp_psicanalista": _wpp_url(tel_psi, msg_psi),
                 }

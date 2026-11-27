@@ -22,6 +22,7 @@ class Usuario(UserMixin, db.Model):
     # Perfis: admin_dev | psicanalista | atendente
     perfil = db.Column(db.String(30), nullable=False, default="atendente")
     ativo = db.Column(db.Boolean, nullable=False, default=True)
+    ultima_leitura_notif = db.Column(db.DateTime, nullable=True)
     criado_em = db.Column(db.DateTime, default=utcnow)
 
     def set_password(self, senha: str):
@@ -238,6 +239,11 @@ def init_db(app):
         cols_ag = [c["name"] for c in insp.get_columns("agendamentos")]
         if "lembrete_enviado" not in cols_ag:
             db.session.execute(db.text("ALTER TABLE agendamentos ADD COLUMN lembrete_enviado BOOLEAN NOT NULL DEFAULT 0"))
+            db.session.commit()
+
+        cols_usr = [c["name"] for c in insp.get_columns("usuarios")]
+        if "ultima_leitura_notif" not in cols_usr:
+            db.session.execute(db.text("ALTER TABLE usuarios ADD COLUMN ultima_leitura_notif DATETIME"))
             db.session.commit()
 
         # 1. Seed de usuários iniciais

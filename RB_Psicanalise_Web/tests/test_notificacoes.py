@@ -64,14 +64,32 @@ class TestNotificacoes(unittest.TestCase):
         )
         ag_id = r_ag.get_json()["id"]
 
-        # 3. Acessa Central de Notificações e valida botões WhatsApp do paciente e do psicanalista
+        # 2b. Agenda também uma sessão para daqui a 4 dias (dentro da semana)
+        em_4_dias = datetime.now() + timedelta(days=4)
+        self.client.post(
+            "/api/agendamentos",
+            json={
+                "paciente_id": pid,
+                "inicio": em_4_dias.strftime("%Y-%m-%dT14:00"),
+                "modalidade": "Online",
+                "valor": "250.00",
+            },
+        )
+
+        # 3. Antes de abrir /notificacoes, o badge aparece no Dashboard (2 compromissos na semana)
+        r_dash = self.client.get("/")
+        self.assertIn(b'border-radius:999px;">2</span>', r_dash.data)
+
+        # 4. Ao abrir /notificacoes, o badge some da barra lateral e os botões WhatsApp + mensagem programada aparecem
         r_not = self.client.get("/notificacoes")
         self.assertEqual(r_not.status_code, 200)
+        self.assertNotIn(b'border-radius:999px;">2</span>', r_not.data)
         self.assertIn(b"Marcos Lembrete", r_not.data)
+        self.assertIn(b"Ver mensagem programada", r_not.data)
         self.assertIn(b"https://wa.me/5511966663333", r_not.data)
         self.assertIn(b"https://wa.me/5511988881111", r_not.data)
 
-        # 4. Marca lembrete como enviado
+        # 5. Marca lembrete como enviado
         r_mark = self.client.post(f"/api/notificacoes/marcar-lembrete/{ag_id}")
         self.assertEqual(r_mark.status_code, 200)
         self.assertTrue(r_mark.get_json()["lembrete_enviado"])

@@ -17,6 +17,8 @@
       padding: 20px;
     }
     .login-card {
+      position: relative;
+      overflow: hidden;
       background: #ffffff;
       width: 100%;
       max-width: 420px;
@@ -25,6 +27,16 @@
       box-shadow: 0 20px 50px rgba(0,0,0,0.4);
       border-top: 4px solid #846122;
     }
+    .login-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(300px circle at var(--mx, -200px) var(--my, -200px), rgba(176, 137, 63, 0.1), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .login-card:hover::before { opacity: 1; }
     .logo-wrap { text-align: center; margin-bottom: 20px; }
     .logo-wrap img { max-width: 210px; max-height: 70px; object-fit: contain; }
     h1 {
@@ -108,5 +120,15 @@
       <button type="submit">Entrar no Sistema</button>
     </form>
   </div>
+  <script>
+    const card = document.querySelector('.login-card');
+    if (card) {
+      card.addEventListener('pointermove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    }
+  </script>
 </body>
 </html>

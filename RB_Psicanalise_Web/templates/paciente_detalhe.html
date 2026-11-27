@@ -4,6 +4,7 @@
 <style>
   .tabs { display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab-link {
+    position: relative;
     padding: 10px 16px;
     text-decoration: none;
     color: #64748b;
@@ -12,8 +13,20 @@
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     white-space: nowrap;
+    transition: color 0.2s ease;
   }
-  .tab-link.active { color: #846122; border-bottom-color: #846122; }
+  .tab-link::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -3px; height: 3px;
+    background: #846122;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .tab-link:hover { color: #0f172a; }
+  .tab-link:hover::after, .tab-link.active::after { transform: scaleX(1); }
+  .tab-link.active { color: #846122; }
 </style>
 {% endblock %}
 {% block content %}

@@ -137,6 +137,7 @@
     }
 
     .nav-link {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -146,8 +147,39 @@
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 500;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
     }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 4px;
+      height: 1.5px;
+      background: linear-gradient(90deg, #b0893f, #fde047);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      opacity: 0.75;
+    }
+    .nav-link:hover::after { transform: scaleX(1); }
+    .nav-link.active::after { display: none; }
+
+    /* Cursor Spotlight sutil */
+    .spotlight-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .spotlight-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(280px circle at var(--mx, -200px) var(--my, -200px), rgba(176, 137, 63, 0.11), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .spotlight-card:hover::before { opacity: 1; }
 
     .nav-link:hover {
       background: #1e293b;
@@ -667,6 +699,15 @@
         setTimeout(() => el.remove(), 260);
       }, 3600);
     };
+
+    // Cursor Spotlight suave em cartões marcados com .spotlight-card
+    document.querySelectorAll('.spotlight-card').forEach(card => {
+      card.addEventListener('pointermove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
 
     // Exibe flash messages do servidor também como toast discreto
     document.addEventListener('DOMContentLoaded', () => {

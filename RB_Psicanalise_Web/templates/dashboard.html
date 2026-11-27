@@ -119,21 +119,21 @@
 </div>
 
 <div class="form-grid" style="margin-bottom: 20px;">
-  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #846122;">
+  <div class="card col-3 spotlight-card" style="margin-bottom:0; border-top: 3px solid #846122;">
     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Pacientes Ativos</span>{{ icon('ui-users-round', 16) }}</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_pacientes }}</div>
+    <div class="kpi-roll" data-target="{{ total_pacientes }}" data-decimals="0" style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_pacientes }}</div>
   </div>
-  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #1e293b;">
+  <div class="card col-3 spotlight-card" style="margin-bottom:0; border-top: 3px solid #1e293b;">
     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Sessões Registradas</span>{{ icon('ui-calendar-days', 16) }}</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_sessoes }}</div>
+    <div class="kpi-roll" data-target="{{ total_sessoes }}" data-decimals="0" style="font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; margin-top:4px;">{{ total_sessoes }}</div>
   </div>
-  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #d97706;">
+  <div class="card col-3 spotlight-card" style="margin-bottom:0; border-top: 3px solid #d97706;">
     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Pagamentos Pendentes</span>{{ icon('ui-clock', 16) }}</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; margin-top:4px; color:#92400e;">{{ qtd_pendentes }} (R$ {{ "%.2f"|format(valor_pendente) }})</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.4rem; font-weight:700; margin-top:4px; color:#92400e;"><span class="kpi-roll" data-target="{{ qtd_pendentes }}" data-decimals="0">{{ qtd_pendentes }}</span> (R$ <span class="kpi-roll" data-target="{{ valor_pendente }}" data-decimals="2">{{ "%.2f"|format(valor_pendente) }}</span>)</div>
   </div>
-  <div class="card col-3" style="margin-bottom:0; border-top: 3px solid #10b981;">
+  <div class="card col-3 spotlight-card" style="margin-bottom:0; border-top: 3px solid #10b981;">
     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; text-transform:uppercase; color:#64748b; font-weight:700;"><span>Recebido / Form. Resp.</span>{{ icon('ui-credit-card', 16) }}</div>
-    <div style="font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; margin-top:4px; color:#065f46;">R$ {{ "%.2f"|format(valor_recebido) }} • {{ form_respondidos }} resp.</div>
+    <div style="font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; margin-top:4px; color:#065f46;">R$ <span class="kpi-roll" data-target="{{ valor_recebido }}" data-decimals="2">{{ "%.2f"|format(valor_recebido) }}</span> • <span class="kpi-roll" data-target="{{ form_respondidos }}" data-decimals="0">{{ form_respondidos }}</span> resp.</div>
   </div>
 </div>
 
@@ -308,6 +308,26 @@
       return `<div class="cx-bars__col" style="--h:${h}%"><span class="cx-bars__tag">R$ ${v.toFixed(2)}</span><div class="cx-bars__bar"></div></div>`;
     }).join('');
     axis.innerHTML = labels.map(m => `<span>${m}</span>`).join('');
+  })();
+
+  // Counter-rolls: anima suavemente os números dos cartões do Dashboard
+  (function initCounterRolls() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('.kpi-roll').forEach(el => {
+      const target = parseFloat(el.dataset.target || '0');
+      const decimals = parseInt(el.dataset.decimals || '0', 10);
+      if (!target) return;
+      const dur = 650;
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = (target * eased).toFixed(decimals);
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = target.toFixed(decimals);
+      }
+      requestAnimationFrame(step);
+    });
   })();
 </script>
 {% endblock %}
